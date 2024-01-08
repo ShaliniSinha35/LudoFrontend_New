@@ -15,6 +15,7 @@ import React, { useState, useEffect } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import axios from "axios";
 import { CommonActions, useNavigation } from '@react-navigation/native';
@@ -31,6 +32,36 @@ const RegisterScreen = () => {
   const [isFormValid, setIsFormValid] = useState(false);
   const [user, setUser] = useState("");
   const [flag,setFlag]=useState(false)
+
+  const [verified, setVerified] = useState(false)
+
+  const getNumber = async () => {
+   
+    let number = await AsyncStorage.getItem('user');
+  //  number = +number;
+    console.log(number)
+    const res = await axios.get(`http://192.168.0.110:5000/verify?userId=${number}`)
+    // console.log(res)
+    const data = res.data
+    console.log("data",parseInt(data[0].mobileNumber))
+
+    if (res.data.length != 0) {
+      setVerified(true)
+      navigation.navigate("Home", {
+                   
+        mobile:parseInt(data[0].mobileNumber)
+      })
+      
+    }
+    else {
+      setVerified(false)
+    }
+
+  }
+   useEffect(()=>{
+        getNumber()
+   
+  },[])
 
 
   useEffect(() => {
@@ -68,6 +99,13 @@ const RegisterScreen = () => {
                 phone: mobileNumber,
             });
             console.log(response.data); // Log the response data
+            try {
+              await AsyncStorage.setItem('user', JSON.stringify(parseInt(mobileNumber)));
+              // console.log("red", total)
+            } catch (error) {
+              console.log("error", error)
+              // Error saving data
+           }
             // navigation.dispatch(
             //   CommonActions.reset({
             //     index: 0,
@@ -135,12 +173,7 @@ const RegisterScreen = () => {
 
           <View>
             <View style={styles.inputBoxCont}>
-              <AntDesign
-                name="lock1"
-                size={24}
-                color="gray"
-                style={{ marginLeft: 8 }}
-              />
+            <MaterialIcons name="local-phone" size={24} color="gray"  style={{ marginLeft: 8 }} />
 
               <TextInput
                 value={mobileNumber}

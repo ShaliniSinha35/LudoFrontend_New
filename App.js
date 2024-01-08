@@ -1,23 +1,74 @@
+import { View, Text, SafeAreaView, StatusBar, Platform } from 'react-native'
+import React from 'react'
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import APP from "./src/App"
+import { NativeBaseProvider } from 'native-base';
+import LoginScreen from './src/screens/LoginScreen';
 
-import { StyleSheet, Text, View,SafeAreaView, Platform, StatusBar } from "react-native";
-import StackNavigator from "./navigation/stacknavigator";
-
-
-export default function App() {
+const App = () => {
+  const Stack = createNativeStackNavigator();
   return (
-    <>
-      
-       <StackNavigator/>
-       
+    <NativeBaseProvider>
+      <NavigationContainer>
+        <SafeAreaView
 
-    </>
-  );
+          style={{
+            paddinTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+            flex: 1,
+            backgroundColor: "white",
+
+          }}
+        >
+          <StatusBar
+            backgroundColor={"white"}
+            barStyle={"dark-content"}
+            translucent={false}
+          />
+          {/* <APP></APP> */}
+          {/* <HomeScreen></HomeScreen> */}
+
+          {/* <Stack.Navigator>
+          <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Game" component={Game} options={{ headerShown: false }} />
+        </Stack.Navigator> */}
+
+
+
+          <Stack.Navigator>
+
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="App"
+              component={APP}
+              options={{ headerShown: false }}
+            />
+
+
+
+          </Stack.Navigator>
+
+
+        </SafeAreaView>
+      </NavigationContainer>
+    </NativeBaseProvider>
+
+
+
+
+  )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-});
+export default App
+
+
+
+
+
+
 
