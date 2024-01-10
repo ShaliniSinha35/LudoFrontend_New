@@ -6,9 +6,8 @@ import ThreePlayerModal from '../../components/NewGameModel/ThreePlayerModal';
 import FourPlayerModal from '../../components/NewGameModel/FourPlayerModal';
 import { EvilIcons } from '@expo/vector-icons';
 import axios from 'axios'
-import io from 'socket.io-client';
-
-const socket = io('http://192.168.0.110:5000');
+import Socket from '../../../utils/Socket';
+import socket from '../../../utils/Socket';
 export default Home = ({
     isStartGameModalVisible,
     onNewGameButtonPress,
@@ -27,43 +26,92 @@ export default Home = ({
 
     const [selectedPlayers, setSelectedPlayers] = useState(null);
     const [number,setMobileNumber]= useState(mobileNumber)
+    
+    const [roomStatus, setRoomStatus] = useState(null);
+     const [roomId,setRoomId] = useState(null)
+     const [socketId, setSocketId] = useState(null)
+   
+    const [flag,setFlag] = useState('')
 
 
 
-    const [player1,setPlayer1] = useState([])
-    const [player2, setPlayer2] = useState([])
-    const [allPlayers, setAllPlayers] = useState([])
-    const [oppName, setOpp]= useState('')
-    const [flag,setFlag] = useState(false)
 
+    // useEffect(() => {
+    
+     
+    //      onBlueInput(foundObject.p1.p1name)
+    //      onYellowInput(foundObject.p2.p2name)
+    //      onStart()
 
-    // useEffect(()=>{
-    //     getPlayerDetails()
-    // },[])
+    //   // Clean up the event listener on component unmount
+    //   return () => {
+    //     socket.off('find');
+    // };
+    // }, []);
+
+let id = ''
 
     useEffect(() => {
-    
-        socket.on('find', (data) => {
-        console.log('Updated players:', data.allPlayers);
-        setAllPlayers(data.allPlayers); 
-        const foundObject = data.allPlayers.find(obj => obj.p1.p1name == `${number}` || obj.p2.p2name == `${number}`);
-        foundObject.p1.p1name == `${number}` ? setOpp(foundObject.p2.p2name) : setOpp(foundObject.p1.p1name)
-        //  console.log("51", foundObject.p1.p1name)
-         onBlueInput(foundObject.p1.p1name)
-         onYellowInput(foundObject.p2.p2name)
-         onStart()
+      Socket.on('roomId', (roomId) => {
+        setRoomId(roomId);
+       
+        // console.log("58",roomId)
       });
-      // Clean up the event listener on component unmount
+      Socket.on('socketId', (socketId) => {
+        // console.log("77", socketId)
+         id= socketId
+         setSocketId(id)
+       
+      });
+  
+      Socket.on('roomStatus', (room) => {
+        setRoomStatus(room);
+  
+        // console.log("62",room)
+    
+      });
+  
+      Socket.on('startTwoPlayerGame', (room) => {
+               setFlag('')
+               onBlueInput(room.users[0])
+               onYellowInput(room.users[1])
+
+              //  console.log('room user 1', room.users[0], mobileNumber)
+              //  console.log('room user 2', room.users[1], mobileNumber)
+
+              
+               if(room.users[0] == mobileNumber && id != '' ){
+                // console.log("80",id)
+                socket.emit('socketId', id)
+              }
+               
+         
+              
+             
+               onStart()
+      });
+  
       return () => {
-        socket.off('find');
-    };
+        Socket.off('roomId');
+        Socket.off('socketId');
+        Socket.off('roomStatus');
+        Socket.off('startTwoPlayerGame');
+        Socket.emit('disconnectUser', { user: mobileNumber })
+      };
     }, []);
 
-
-
     const handleTwo =()=>{
-      setFlag(true)
-      socket.emit('find', { name: number });
+     
+      setFlag('Searching for a Player...')
+      const playerId = mobileNumber
+      Socket.emit('joinRoom', { user: playerId });
+      // if (roomStatus && roomStatus.isFull() && roomStatus.users.includes(playerId)) {
+    
+      // } 
+      // else {
+      //   // console.log('Room is not ready for a game yet');
+      //   setFlag('Searching for a Player...')
+      // }
     
     }
 
@@ -99,6 +147,7 @@ export default Home = ({
     useEffect(()=>{
 
     }, [selectedPlayers])
+
     return (
         <ImageBackground source={require("../../../assets/bg.png")} style={styles.container}>
           <View style={{position:"absolute", top:10,right:20,justifyContent:"center",alignItems:"center"}}>
@@ -110,8 +159,8 @@ export default Home = ({
 
           {
       
-           flag && <>
-          <Text style={{color:"white",fontSize:18}}>Searching for the player.....</Text>
+           flag!= '' && <>
+          <Text style={{color:"white",fontSize:18}}>{flag}</Text>
           <ActivityIndicator></ActivityIndicator>
           </>
      
@@ -125,50 +174,7 @@ export default Home = ({
                <TouchableOpacity style={styles.newGameButton} onPress={handleTwo}>
                <Text style={{fontSize:18,color:"white"}}>2 Players</Text>
             </TouchableOpacity>
-            {/* <TouchableOpacity style={styles.newGameButton} onPress={handleThree}>
-               <Text style={{fontSize:18,color:"white"}}>3 Players</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.newGameButton} onPress={handleFour}>
-               <Text style={{fontSize:18,color:"white"}}>4 Players</Text>
-            </TouchableOpacity> */}
-            {/* <TouchableOpacity style={styles.newGameButton} onPress={onNewGameButtonPress}>
-                <Text >New Game</Text>
-            </TouchableOpacity> */}
-            {/* <Image source={require('../../images/ludo.png')} style={styles.imageStyle} /> */}
-
-           
-            {/* {selectedPlayers !== null && (
-        <NewGameModel
-          isStartGameModalVisible={isStartGameModalVisible}
-          onCancel={onCancel}
-          onRedInput={onRedInput}
-          onYellowInput={onYellowInput}
-          onBlueInput={onBlueInput}
-          onGreenInput={onGreenInput}
-          red={red}
-          yellow={yellow}
-          green={green}
-          blue={blue}
-          onStart={onStart}
-          playerCount={selectedPlayers}
-        />
-      )} */}
-                  
-
-      {/* <NewGameModel
-      isStartGameModalVisible={isStartGameModalVisible}
-      onCancel={onCancel}
-      onRedInput={onRedInput}
-      onYellowInput={onYellowInput}
-      onBlueInput={onBlueInput}
-      onGreenInput={onGreenInput}
-      red={red}
-      yellow={yellow}
-      green={green}
-      blue={blue}
-      onStart={onStart}
-      playerCount={selectedPlayers}
-    /> */}
+            
 
 {selectedPlayers === 2 && (
         <TwoPlayerModal

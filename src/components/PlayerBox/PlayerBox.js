@@ -35,112 +35,112 @@ export default PlayerBox = ({ color, customStyle, lifeline, one, two, three, fou
 
     const [showTimer, setShowTimer] = useState(true)
 
-    // useEffect(() => {
-    //     let sum = 0
-    //     let onePoint = 0
-    //     let twoPoint = 0
-    //     let threePoint = 0
-    //     let fourPoint = 0
-    //     // for (let i = 0; i < playerScore.length; i++) {
+    useEffect(() => {
+        let sum = 0
+        let onePoint = 0
+        let twoPoint = 0
+        let threePoint = 0
+        let fourPoint = 0
+        // for (let i = 0; i < playerScore.length; i++) {
 
-    //     //     sum = playerScore[i] + sum
+        //     sum = playerScore[i] + sum
 
-    //     // }
-    //     for (let i = 0; i < one.oneCount.length; i++) {
-    //         onePoint = one.oneCount[i] + onePoint
-    //     }
-    //     for (let i = 0; i < two.twoCount.length; i++) {
-    //         twoPoint = two.twoCount[i] + twoPoint
-    //     }
-    //     for (let i = 0; i < three.threeCount.length; i++) {
-    //         threePoint = three.threeCount[i] + threePoint
-    //     }
-    //     for (let i = 0; i < four.fourCount.length; i++) {
-    //         fourPoint = four.fourCount[i] + fourPoint
-    //     }
+        // }
+        for (let i = 0; i < one.oneCount.length; i++) {
+            onePoint = one.oneCount[i] + onePoint
+        }
+        for (let i = 0; i < two.twoCount.length; i++) {
+            twoPoint = two.twoCount[i] + twoPoint
+        }
+        for (let i = 0; i < three.threeCount.length; i++) {
+            threePoint = three.threeCount[i] + threePoint
+        }
+        for (let i = 0; i < four.fourCount.length; i++) {
+            fourPoint = four.fourCount[i] + fourPoint
+        }
 
-    //     sum = onePoint + twoPoint + threePoint + fourPoint
-    //     // console.log("sum", sum)
-    //     // console.log(onePoint, "onepoint", twoPoint, "twoPoint", threePoint, "threePoint", fourPoint, "fourPoint")
-    //     setScore(sum)
-    //     setOneScore(onePoint)
-    //     setTwoScore(twoPoint)
-    //     setThreeScore(threePoint)
-    //     setFourScore(fourPoint)
-    //     storeData(sum)
-
-
-    // })
+        sum = onePoint + twoPoint + threePoint + fourPoint
+        // console.log("sum", sum)
+        // console.log(onePoint, "onepoint", twoPoint, "twoPoint", threePoint, "threePoint", fourPoint, "fourPoint")
+        setScore(sum)
+        setOneScore(onePoint)
+        setTwoScore(twoPoint)
+        setThreeScore(threePoint)
+        setFourScore(fourPoint)
+        storeData(sum)
 
 
-    // const storeData = async (total) => {
-
-    //     if (color == "#ec1d27") {
-    //         try {
-    //             await AsyncStorage.setItem('red', JSON.stringify(total));
-    //             // console.log("red", total)
-    //         } catch (error) {
-    //             console.log("error", error)
-    //             // Error saving data
-    //         }
-    //     }
-    //     if (color == "#01A147") {
-    //         try {
-    //             await AsyncStorage.setItem('green', JSON.stringify(total));
-    //             // console.log("green", total)
-    //         } catch (error) {
-    //             // Error saving data
-    //             console.log("error", error)
-    //         }
-    //     }
-    //     if (color == "#29b6f6") {
-    //         try {
-    //             await AsyncStorage.setItem('blue', JSON.stringify(total));
-    //             // console.log("blue", total)
-    //         } catch (error) {
-    //             // Error saving data
-    //             console.log("error", error)
-    //         }
-    //     }
-    //     if (color == "#ffe01b") {
-    //         try {
-    //             await AsyncStorage.setItem('yellow', JSON.stringify(total));
-    //             // console.log("yellow", total)
-    //         } catch (error) {
-    //             // Error saving data
-    //             console.log("error", error)
-    //         }
-    //     }
-
-    // };
+    })
 
 
+    const storeData = async (total) => {
 
-    // const renderDiceIcons = () => {
+        if (color == "#ec1d27") {
+            try {
+                await AsyncStorage.setItem('red', JSON.stringify(total));
+                // console.log("red", total)
+            } catch (error) {
+                console.log("error", error)
+                // Error saving data
+            }
+        }
+        if (color == "#01A147") {
+            try {
+                await AsyncStorage.setItem('green', JSON.stringify(total));
+                // console.log("green", total)
+            } catch (error) {
+                // Error saving data
+                console.log("error", error)
+            }
+        }
+        if (color == "#29b6f6") {
+            try {
+                await AsyncStorage.setItem('blue', JSON.stringify(total));
+                // console.log("blue", total)
+            } catch (error) {
+                // Error saving data
+                console.log("error", error)
+            }
+        }
+        if (color == "#ffe01b") {
+            try {
+                await AsyncStorage.setItem('yellow', JSON.stringify(total));
+                // console.log("yellow", total)
+            } catch (error) {
+                // Error saving data
+                console.log("error", error)
+            }
+        }
+
+    };
 
 
-    //     if (diceNumber === 1) {
-    //         return <FontAwesome5 name="dice-one" size={30} color="#fdfffc" />;
-    //     } else if (diceNumber === 2) {
-    //         return <FontAwesome5 name="dice-two" size={30} color="#fdfffc" />;
-    //     } else if (diceNumber === 3) {
-    //         return <FontAwesome5 name="dice-three" size={30} color="#fdfffc" />;
-    //     } else if (diceNumber === 4) {
-    //         return <FontAwesome5 name="dice-four" size={30} color="#fdfffc" />;
-    //     } else if (diceNumber === 5) {
-    //         return <FontAwesome5 name="dice-five" size={30} color="#fdfffc" />;
-    //     } else if (diceNumber === 6) {
-    //         return <FontAwesome5 name="dice-six" size={30} color="#fdfffc" />;
-    //     }
+
+    const renderDiceIcons = () => {
 
 
-    //     return null; // Return null if the diceValue is not 1-6
-    // }
+        if (diceNumber === 1) {
+            return <FontAwesome5 name="dice-one" size={30} color="#fdfffc" />;
+        } else if (diceNumber === 2) {
+            return <FontAwesome5 name="dice-two" size={30} color="#fdfffc" />;
+        } else if (diceNumber === 3) {
+            return <FontAwesome5 name="dice-three" size={30} color="#fdfffc" />;
+        } else if (diceNumber === 4) {
+            return <FontAwesome5 name="dice-four" size={30} color="#fdfffc" />;
+        } else if (diceNumber === 5) {
+            return <FontAwesome5 name="dice-five" size={30} color="#fdfffc" />;
+        } else if (diceNumber === 6) {
+            return <FontAwesome5 name="dice-six" size={30} color="#fdfffc" />;
+        }
 
-    // const defaultDiceIcons = () => {
-    //     return <FontAwesome5 name="dice-one" size={30} color="white" />;
 
-    // }
+        return null; // Return null if the diceValue is not 1-6
+    }
+
+    const defaultDiceIcons = () => {
+        return <FontAwesome5 name="dice-one" size={30} color="white" />;
+
+    }
 
 
     let shouldRenderBackgroundColor = 1;
@@ -213,7 +213,7 @@ export default PlayerBox = ({ color, customStyle, lifeline, one, two, three, fou
                     <>
 
 
-                        {/* <View style={{ alignItems: "flex-end", padding: 10, flex: 1 }}>
+                        <View style={{ alignItems: "flex-end", padding: 10, flex: 1 }}>
 
 
                             {
@@ -269,33 +269,33 @@ export default PlayerBox = ({ color, customStyle, lifeline, one, two, three, fou
 
 
 
-                        </View> */}
-{/* flexDirection: "row", alignItems: "flex-end" */}
-                        <View style={{  }}>
-                        <Image source={require("../../../assets/player2.png")} style={{ height: 80, width: 95, resizeMode: "contain" }}></Image>
-                        <Text allowFontScaling={false} style={{ color: "white", fontSize: 10, margin: 4 }}>+91{playerName}</Text>
-                            {/* {
+                        </View>
+
+                        <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+
+
+                            {
                                 timer ?
                                     <>
-                                        <Image style={{ position: "absolute", opacity: 0.2, height: 90, width: 110,top:-40, left:-10 }} source={require("../../../assets/gif1.gif")} ></Image>
+                                        <Image style={{ position: "absolute", opacity: 0.2, height: 90, width: 110, top: -40, left: -10 }} source={require("../../../assets/gif1.gif")} ></Image>
 
 
                                         <Image source={require("../../../assets/player2.png")} style={{ height: 80, width: 90, resizeMode: "contain" }}></Image>
                                     </>
-                                 
+
                                     : <Image source={require("../../../assets/player2.png")} style={{ height: 80, width: 95, resizeMode: "contain" }}></Image>
 
-                            } */}
+                            }
 
-                            {/* <View style={{}}>
+                            <View style={{}}>
                                 <Text allowFontScaling={false} style={{ fontSize: 18, color: "white", textAlign: "center" }}>Score</Text>
                                 <Text allowFontScaling={false} style={{ fontSize: 30, color: "white", textAlign: "center", fontWeight: 500 }}>{totalScore}</Text>
-                            </View> */}
+                            </View>
 
                         </View>
 
 
-                        {/* <View style={{ backgroundColor: color == '#ec1d27' ? "#780000" : color == '#29b6f6' ? '#0582ca' : color == '#01A147' ? '#004b23' : color == '#ffe01b' ? '#faa307' : null, flexDirection: "row", borderTopLeftRadius: 5, borderTopRightRadius: 5, justifyContent: "space-between", alignItems: "center" }}>
+                        <View style={{ backgroundColor: color == '#ec1d27' ? "#780000" : color == '#29b6f6' ? '#0582ca' : color == '#01A147' ? '#004b23' : color == '#ffe01b' ? '#faa307' : null, flexDirection: "row", borderTopLeftRadius: 5, borderTopRightRadius: 5, justifyContent: "space-between", alignItems: "center" }}>
                             <Text allowFontScaling={false} style={{ color: "white", fontSize: 10, margin: 4 }}>+91{playerName}</Text>
                             <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "center" }}>
 
@@ -320,119 +320,18 @@ export default PlayerBox = ({ color, customStyle, lifeline, one, two, three, fou
 
 
                             </View>
-                        </View> */}
+                        </View>
 
 
-                    
 
 
-                   </>
+
+                    </>
                 }
 
             </LinearGradient>
 
 
-            {/* {
-                    playerName &&
-                    <>
-
-                        <View style={{ flex: 1, padding: 8 }}>
-
-                            {
-                                timer ?
-                                <CountdownCircleTimer
-                                    isPlaying
-                                    duration={15}
-                                    // colors={[color == '#ec1d27' ? "#780000" : color == '#29b6f6' ? '#0582ca' : color == '#01A147' ? '#004b23' : color == '#ffe01b' ? '#fdc500' : null]}
-
-                                    colors={['#008000', '#F7B801', '#A30000', '#A30000']}
-                                    // colors={color == '#ec1d27'?['#780000', '#780000']: color == '#29b6f6'?['#0582ca', '#0582ca']: color == '#01A147'?['#004b23', '#004b23']:color == '#ffe01b'?['#fdc500', '#fdc500']:null }
-                                    colorsTime={[7, 5, 2, 0]}
-                                    size={45}
-                                    strokeWidth={3}
-                                    strokeLinecap='square'
-
-                                >
-                                    {({ remainingTime }) =>
-
-                                        <Text style={{ color: "white" }}>{renderDiceIcons()}</Text>}
-
-                                </CountdownCircleTimer>
-                                :
-                                <CountdownCircleTimer
-                                isPlaying
-                                duration={0}
-                                // colors={[color == '#ec1d27' ? "#780000" : color == '#29b6f6' ? '#0582ca' : color == '#01A147' ? '#004b23' : color == '#ffe01b' ? '#fdc500' : null]}
-
-                                colors={['#008000', '#F7B801', '#A30000', '#A30000']}
-                                // colors={color == '#ec1d27'?['#780000', '#780000']: color == '#29b6f6'?['#0582ca', '#0582ca']: color == '#01A147'?['#004b23', '#004b23']:color == '#ffe01b'?['#fdc500', '#fdc500']:null }
-                                colorsTime={[7, 5, 2, 0]}
-                                size={45}
-                                strokeWidth={3}
-                                strokeLinecap='square'
-
-                            >
-                                {({ remainingTime }) =>
-
-                                    <Text style={{ color: "white" }}>{defaultDiceIcons()}</Text>}
-
-                            </CountdownCircleTimer>
-                            }
-
-
-
-                        </View>
-
-                        <View style={{ flex: 1, position: "absolute", top: 10, right: 10 }}>
-                            <Text style={{ fontSize: 20, color: "white", textAlign: "center" }}>Score</Text>
-                            <Text style={{ fontSize: 30, color: "white", textAlign: "center" }}>{totalScore}</Text>
-                        </View>
-
-                        <View style={{ flex: 3, alignItems: "flex-start", marginTop: 25 }}>
-
-                            
-                            {
-                                timer ?    <BlinkView style={{ flex: 1,width:"100%",flexDirection:"row"  }} blinking={isBlinking ? true : false} delay={200}>
-                                    <Image source={require("../../../assets/user2.png")} style={{ height: 90, width: 95, resizeMode: "contain" }}></Image>
-
-
-                                </View> :
-                                    <View style={{ flex: 1,width:"100%",flexDirection:"row"  }} blinking={isBlinking ? true : false} delay={200}>
-                                        <Image source={require("../../../assets/user2.png")} style={{ height: 90, width: 95, resizeMode: "contain" }}></Image>
-                                        <Text style={{color:"white",marginTop:20}}>{playerName}</Text>
-                                    </View>
-                              
-                            }
-                        </View>
-
-                        <View style={{ flex: 1, height: 5, backgroundColor: color == '#ec1d27' ? "#780000" : color == '#29b6f6' ? '#0582ca' : color == '#01A147' ? '#004b23' : color == '#ffe01b' ? '#faa307' : null, flexDirection: "row", borderTopLeftRadius: 5, borderTopRightRadius: 5, justifyContent: "space-between", alignItems: "center" }}>
-                            <Text style={{ color: "white", fontSize: 10, margin: 4 }}>+91 99***999</Text>
-                            <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "center" }}>
-
-                                {
-                                    lifeline == 3 ? <>
-                                        <Entypo name="heart" size={15} color="white" />
-                                        <Entypo name="heart" size={15} color="white" />
-                                        <Entypo name="heart" size={15} color="white" />
-                                    </> : lifeline == 2 ? <>
-                                        <Entypo name="heart" size={15} color="white" />
-                                        <Entypo name="heart" size={15} color="white" />
-                                        <Entypo name="heart-outlined" size={15} color="white" />
-                                    </> :
-
-                                        lifeline == 1 ? <>
-                                            <Entypo name="heart" size={15} color="white" />
-                                            <Entypo name="heart-outlined" size={15} color="white" />
-                                            <Entypo name="heart-outlined" size={15} color="white" />
-                                        </> : null
-
-                                }
-
-                            
-                            </View>
-                        </View>
-                    </>
-                } */}
 
         </View>
     )
@@ -478,26 +377,5 @@ const styles = StyleSheet.create({
 })
 
 
-{/* <View style={[styles.piecesContainer]}>
 
-                    {renderPiece(one)}
-                    {renderPiece(two)}
 
-                </View>
-                <View style={styles.piecesContainer}>
-                    {renderPiece(three)}
-                    {renderPiece(four)}
-                </View> */}
-
-{/* {
-                color == "#ec1d27"  &&
-                 <> 
-
-                  <View style={{flex:3, alignItems:"flex-start"}}>
-                <Image source={require("../../../assets/user2.png")} style={{height:68, width:70, resizeMode:"contain", elevation:5}}></Image>
-                </View>
-                <View style={{flex:1, height:5, borderColor:"white", borderWidth:1,borderRadius:8, backgroundColor:"#780000"}}>
-
-                </View></>
-              
-             } */}

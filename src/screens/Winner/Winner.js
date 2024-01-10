@@ -18,7 +18,7 @@ const [greenPlayer,setGreen]= useState(props.green.name)
 const getPlayerDetails = async()=>{
     try{
         const res = await AsyncStorage.getItem('playerArray' || '0')
-        // console.log(res)
+        console.log(res)
         setPlayerArr(JSON.parse(res))
     }
     catch(err){
@@ -31,36 +31,17 @@ const getPlayerDetails = async()=>{
     getPlayerDetails()
    },[])
 
-    // useEffect(() => {
-    //     const backAction = () => {
-    //       Alert.alert('Hold on!', 'Are you sure you want to go back?', [
-    //         {
-    //           text: 'Cancel',
-    //           onPress: () => null,
-    //           style: 'cancel',
-    //         },
-    //         {text: 'YES', onPress: () => BackHandler.exitApp()},
-    //       ]);
-    //       return true;
-
-    //     };
-    
-    //     const backHandler = BackHandler.addEventListener(
-    //       'hardwareBackPress',
-    //       backAction,
-    //     );
-    
-    //     return () => backHandler.remove();
-    //   }, []);
+  
 
 
-    const handlePlay =()=>{
+    const handlePlay =async()=>{
       props.backToHome()
       props.onRedInput('')
       props.onBlueInput('')
       props.onYellowInput('')
       props.onGreenInput('')
-      
+
+      await AsyncStorage.removeItem('playerArray'); 
 
     }
 

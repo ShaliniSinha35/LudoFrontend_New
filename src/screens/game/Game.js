@@ -25,217 +25,165 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { Haptics } from 'expo-haptics';
 import { FontAwesome } from '@expo/vector-icons';
-import io from 'socket.io-client';
-const socket = io('http://192.168.0.110:5000');
+import Socket from '../../../utils/Socket';
+import socket from '../../../utils/Socket';
+
 
 export default class Game extends Component {
 
     constructor(props) {
-// console.log(props)
+        // console.log(props)
         super(props);
         const { red, blue, yellow, green } = colors;
         const { redName, blueName, yellowName, greenName, twoPlayer, threePlayer, fourPlayer, number } = props;
-        this.socket = socket
         this.intervalId = null
         this.rollingSound = new Audio.Sound();
         this.soundObject = new Audio.Sound();
         this.rollingValue = new Animated.Value(0);
         this.onDiceRoll = this.onDiceRoll.bind(this);
+        this.setTurn = false
+        this.socketId = null
         this.state = {
-
             activePlayer: number,
-              diceValue: 1,
-              activePlayerIndex: null,
-              red: this.initPlayer(RED, red, redName),
-              yellow: this.initPlayer(YELLOW, yellow, yellowName),
-              green: this.initPlayer(GREEN, green, greenName),
-              blue: this.initPlayer(BLUE, blue, blueName),
-              isRolling: false,
-              diceNumber: 1,
-              moves: [],
-              bonusCount: 0,
-              animateForSelection: false,
-              isWaitingForDiceRoll: true,
-              turn: blueName !== "" ? BLUE : redName !== "" ? RED : yellowName !== "" ? YELLOW : greenName !== "" ? GREEN : undefined,
-              diceRollTestData: [1, 2, 3, 4, 5, 6],
-              diceRollTestDataIndex: 0,
-              diceValue: 1,
-              extraChance: 0,
-              redScore: [],
-              blueScore: [],
-              greenScore: [],
-              yellowScore: [],
-              rollingRotation: this.rollingValue.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '360deg'],
-  
-              }),
-              currentTurn: null,
-              timers: {
-                  RED: null,
-                  YELLOW: null,
-                  GREEN: null,
-                  BLUE: null,
-              },
-              redHeart: 3,
-              blueHeart: 3,
-              greenHeart: 3,
-              yellowHeart: 3,
-              counter: 0,
-              timerScreen: false,
-              remainingTime: 180, // 3 minutes in seconds,
-              isActive: true,
-              firstWinner: null,
-              secondWinner: null,
-              thirdWinner: null,
-  
-              last: null,
-              redTotalScore: 0,
-              yellowTotalScore: 0,
-              blueTotalScore: 0,
-              greenTotalScore: 0,
-              winnerArray: [],
-              status: "warning",
-              title: "You missed a turn!",
-              subtitle: "If you miss 3 turns, you will be out of the game",
-              showAlert: false,
-              timerId: null,
-              keysToRemove: ['red', 'green', 'blue','yellow'],
-          
+            activePlayerIndex: null,
+            red: this.initPlayer(RED, red, redName),
+            yellow: this.initPlayer(YELLOW, yellow, yellowName),
+            green: this.initPlayer(GREEN, green, greenName),
+            blue: this.initPlayer(BLUE, blue, blueName),
+            isRolling: false,
+            diceNumber: 1,
+            moves: [],
+            bonusCount: 0,
+            animateForSelection: false,
+            isWaitingForDiceRoll: true,
+            turn: blueName !== "" ? BLUE : redName !== "" ? RED : yellowName !== "" ? YELLOW : greenName !== "" ? GREEN : undefined,
+            diceRollTestData: [1, 2, 3, 4, 5, 6],
+            diceRollTestDataIndex: 0,
+            extraChance: 0,
+            redScore: [],
+            blueScore: [],
+            greenScore: [],
+            yellowScore: [],
+            rollingRotation: this.rollingValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0deg', '360deg'],
+
+            }),
+
+            timers: {
+                RED: null,
+                YELLOW: null,
+                GREEN: null,
+                BLUE: null,
+            },
+            redHeart: 3,
+            blueHeart: 3,
+            greenHeart: 3,
+            yellowHeart: 3,
+            remainingTime: 180, // 3 minutes in seconds
+            winnerArray: [],
+            status: "warning",
+            title: "You missed a turn!",
+            subtitle: "If you miss 3 turns, you will be out of the game",
+            showAlert: false,
+            timerId: null,
+            keysToRemove: ['red', 'green', 'blue', 'yellow'],
+
+            gameState: {
+                red: this.initPlayer(RED, red, redName),
+                yellow: this.initPlayer(YELLOW, yellow, yellowName),
+                green: this.initPlayer(GREEN, green, greenName),
+                blue: this.initPlayer(BLUE, blue, blueName),
+            },
+
+
         }
 
 
 
     }
 
+    // getTurnValue() {
+    //     if (socket) {
+    //         Socket.on('socketId', (socketId) => {
+    //             console.log("116", socketId)
+    //             this.socketId = socketId
+    //             console.log("this.socketId", this.socketId)
 
- 
-
-    componentDidUpdate(prevProps, prevState) {
-        // Check if the gameState has changed
-        if (this.state !== prevState) {
-          // Emit the updated state to the backend
-          console.log("updated")
-          this.socket.emit('updateGameState', this.state);
-        }
-      }
+    //             Socket.emit('changeTurn', this.socketId, this.setTurn)
+    //         });
+    //     }
+    // }
 
 
-    getActivePlayer(){
-        this.socket.on('activePlayerIndex', ({ activePlayerIndex }) => {
-            console.log('Received activePlayerIndex:', activePlayerIndex);
-      
-         
-            const { gameState } = this.state;
-            this.setState({ gameState: { ...gameState, activePlayerIndex: activePlayerIndex } });
-          })
-    }
 
     componentDidMount() {
+        this.loadSound();
+        this.loadPieceBiteSound()
+        // this.displayTimer();
+        this.startTimer()
 
+        // this.getTurnValue()
 
-        this.socket.on('broadcastGameState', (gameState) => {
-            console.log('Received broadcasted gameState:', gameState);
-        
+        Socket.on('broadcastGameState', ({ gameState }) => {
+            // console.log('Received broadcasted gameState:', gameState);
+
             // Update the component state with the received gameState
-            this.setState((prevState) => ({
-                ...prevState,
+            this.setState({
                 activePlayer: gameState.activePlayer,
-                diceValue: gameState.diceValue,
-                activePlayerIndex: gameState.activePlayerIndexl,
+
+                activePlayerIndex: gameState.activePlayerIndex,
                 red: gameState.red,
                 yellow: gameState.yellow,
                 green: gameState.green,
                 blue: gameState.blue,
-                isRolling: gameState.isRolling,
+                // isRolling: gameState.isRolling,
                 diceNumber: gameState.diceNumber,
-                moves: gameState.moves,
                 bonusCount: gameState.bonusCount,
-                animateForSelection: gameState.animateForSelection,
                 isWaitingForDiceRoll: gameState.isWaitingForDiceRoll,
                 turn: gameState.turn,
                 diceRollTestData: gameState.diceRollTestData,
-                diceRollTestDataIndex:gameState.diceRollTestDataIndex,
-                diceValue: gameState.diceValue,
+                diceRollTestDataIndex: gameState.diceRollTestDataIndex,
                 extraChance: gameState.extraChance,
                 redScore: gameState.redScore,
                 blueScore: gameState.blueScore,
                 greenScore: gameState.greenScore,
                 yellowScore: gameState.yellowScore,
-                rollingRotation:gameState.rollingRotation,
-                currentTurn: gameState.currentTurn,
-                timers:gameState.timers,
-                // redHeart: 3,
-                // blueHeart: 3,
-                // greenHeart: 3,
-                // yellowHeart: 3,
-                counter: gameState.counter,
-                timerScreen: gameState.timerScreen,
+                redHeart: gameState.redHeart,
+                blueHeart: gameState.blueHeart,
+                greenHeart: gameState.greenHeart,
+                yellowHeart: gameState.yellowHeart,
                 remainingTime: gameState.remainingTime, // 3 minutes in seconds,
-                isActive: gameState.isActive,
-                firstWinner: gameState.firstWinner,
-                // secondWinner: null,
-                // thirdWinner: null,
-    
-                // last: null,
-                // redTotalScore: 0,
-                // yellowTotalScore: 0,
-                // blueTotalScore: 0,
-                // greenTotalScore: 0,
-                // winnerArray: [],
-                // status: "warning",
-                // title: "You missed a turn!",
-                // subtitle: "If you miss 3 turns, you will be out of the game",
-                // showAlert: false,
-                // timerId: null,
-                // keysToRemove: ['red', 'green', 'blue','yellow'],
-            }));
-          });
-
-        // this.getActivePlayer()
-        // this.socket.emit('activePlayer', {number:this.state.activePlayer})
-      
-        // console.log("607",this.state.activePlayerIndex)
+                keysToRemove: gameState.keysToRemove,
+            })
+        })
 
 
-        //find activePlayer
-    
-    
-        // Event listeners for server responses
-        // this.socket.on('diceRolled', this.handleDiceRolled);
+        Socket.on('setTurn', (value) => {
+            console.log('158', value, this.socketId)
+            this.setTurn = value
+        })
 
-    
-        // Other event listeners...
-      }
-    
-      componentWillUnmount() {
-        // const { socket } = this.state;
-        if (this.socket) {
-          this.socket.disconnect();
-        }
-      }
+        this.clearAsyncStorageMultiple(this.state.keysToRemove).then(success => {
+            if (success) {
+                // console.log('Keys cleared successfully');
+            } else {
+                // console.log('Failed to clear keys');
+            }
+        });
+    }
 
+    componentWillUnmount() {
 
-    //   handleDiceRolled = (result) => {
-    //     const { gameState } = this.state;
-    //     this.setState({ gameState: { ...gameState, diceValue: result } });
-    //   };
+        // if (Socket) {
+        //     Socket.emit('disconnect')
+        // }
+        this.unloadSound();
+        this.unLoadPieceBiteSound()
+        clearInterval(this.intervalId);
+        Socket.emit('disconnectUser', { user: this.state.activePlayer })
+    }
 
-    //  setActivePlayer = (activePlayerIndex) => {
-    //     const { gameState } = this.state;
-    //     this.setState({ gameState: { ...gameState, activePlayerIndex: activePlayerIndex } });
-    //   };
-
-    // rollDice = () => {
-    //     socket.emit('rollDice');
-    //   };
-    
-    // stopTimer = () => {
-    //     clearInterval(this.intervalId);
-    //     this.setState({ isActive: false, remainingTime: 180 }); // Reset to 3 minutes
-
-
-    // };
 
     formatTime = (time) => {
         const minutes = Math.floor(time / 60);
@@ -244,26 +192,25 @@ export default class Game extends Component {
     };
 
 
+    // componentDidMount() {
 
-    componentDidMount() {
-
-        // this.loadSound();
-        // this.loadPieceBiteSound()
-        // this.displayTimer();
-        // this.startTimer()
-    //   AsyncStorage.clear()
-    //  this.clearAsyncStorageMultiple(this.state.keysToRemove).then(success => {
-    //     if (success) {
-    //         // console.log('Keys cleared successfully');
-    //     } else {
-    //         // console.log('Failed to clear keys');
-    //     }
-    // });
+    //     // this.loadSound();
+    //     // this.loadPieceBiteSound()
+    //     // this.displayTimer();
+    //     // this.startTimer()
+    // //   AsyncStorage.clear()
+    // //  this.clearAsyncStorageMultiple(this.state.keysToRemove).then(success => {
+    // //     if (success) {
+    // //         // console.log('Keys cleared successfully');
+    // //     } else {
+    // //         // console.log('Failed to clear keys');
+    // //     }
+    // // });
 
 
-    }
+    // }
 
-    async clearAsyncStorageMultiple (keysArray) {
+    async clearAsyncStorageMultiple(keysArray) {
         try {
             for (const key of keysArray) {
                 await AsyncStorage.removeItem(key);
@@ -275,7 +222,7 @@ export default class Game extends Component {
         }
     };
 
- 
+
 
 
     startTimer() {
@@ -295,330 +242,330 @@ export default class Game extends Component {
                     this.props.onEnd()
                     this.stopTimer();
 
+
                 }
             });
+            // Socket.emit('updateGameState', this.state);
         }, 1000);
     }
 
-    // retrieveData = async () => {
-    //     //    console.log("retrieve data")
+    retrieveData = async () => {
+        //    console.log("retrieve data")
 
 
-    //     const { yellowName, blueName, greenName, redName } = this.props;
+        const { yellowName, blueName, greenName, redName } = this.props;
 
-    //     if (redName != "" && blueName != "" && greenName != "" && yellowName != "") {
-    //         try {
-    //             const redValue = await AsyncStorage.getItem('red');
-    //             const yellowValue = await AsyncStorage.getItem('yellow');
-    //             const greenValue = await AsyncStorage.getItem('green');
-    //             const blueValue = await AsyncStorage.getItem('blue');
+        if (redName != "" && blueName != "" && greenName != "" && yellowName != "") {
+            try {
+                const redValue = await AsyncStorage.getItem('red');
+                const yellowValue = await AsyncStorage.getItem('yellow');
+                const greenValue = await AsyncStorage.getItem('green');
+                const blueValue = await AsyncStorage.getItem('blue');
 
-    //             const values = [
-    //                 { key: 'red', value: redValue },
-    //                 { key: 'yellow', value: yellowValue },
-    //                 { key: 'green', value: greenValue },
-    //                 { key: 'blue', value: blueValue },
-    //             ];
-    //             const sortedValues = values.sort((a, b) => b.value - a.value);
-    //             const firstGreatest = sortedValues[0].key;
-    //             const secondGreatest = sortedValues[1].key;
-    //             const thirdGreatest = sortedValues[2].key;
-    //             const fourthGreatest = sortedValues[3].key;
+                const values = [
+                    { key: 'red', value: redValue },
+                    { key: 'yellow', value: yellowValue },
+                    { key: 'green', value: greenValue },
+                    { key: 'blue', value: blueValue },
+                ];
+                const sortedValues = values.sort((a, b) => b.value - a.value);
+                const firstGreatest = sortedValues[0].key;
+                const secondGreatest = sortedValues[1].key;
+                const thirdGreatest = sortedValues[2].key;
+                const fourthGreatest = sortedValues[3].key;
 
-            
 
-    //             for (let i = 0; i < sortedValues.length; i++) {
-    //                 this.state.winnerArray.push(sortedValues[i])
 
-    //             }
+                for (let i = 0; i < sortedValues.length; i++) {
+                    this.state.winnerArray.push(sortedValues[i])
 
-    //             await AsyncStorage.setItem('playerArray', JSON.stringify(this.state.winnerArray))
+                }
 
-             
-    //         }
-    //         catch (error) {
-    //             console.log(error)
-    //         }
+                await AsyncStorage.setItem('playerArray', JSON.stringify(this.state.winnerArray))
+
+
+            }
+            catch (error) {
+                console.log(error)
+            }
+
+        }
+
+        else if (redName != "" && blueName != "" && yellowName != "") {
+            try {
+                const redValue = await AsyncStorage.getItem('red');
+                const yellowValue = await AsyncStorage.getItem('yellow');
+                const blueValue = await AsyncStorage.getItem('blue');
+
+                const values = [
+                    { key: 'red', value: redValue },
+                    { key: 'yellow', value: yellowValue },
+                    { key: 'blue', value: blueValue },
+                ];
+                const sortedValues = values.sort((a, b) => b.value - a.value);
+                const firstGreatest = sortedValues[0].key;
+                const secondGreatest = sortedValues[1].key;
+                const thirdGreatest = sortedValues[2].key;
+
+
+
+                for (let i = 0; i < sortedValues.length; i++) {
+                    this.state.winnerArray.push(sortedValues[i])
+
+                }
+
+                await AsyncStorage.setItem('playerArray', JSON.stringify(this.state.winnerArray))
+
+
+            }
+            catch (error) {
+                console.log(error)
+            }
+        }
+        else {
+
+            try {
+                const yellowValue = await AsyncStorage.getItem('yellow');
+                const blueValue = await AsyncStorage.getItem('blue');
+                const values = [
+                    { key: 'yellow', value: yellowValue },
+                    { key: 'blue', value: blueValue },
+                ];
+                const sortedValues = values.sort((a, b) => b.value - a.value);
+                const firstGreatest = sortedValues[0].key;
+                const secondGreatest = sortedValues[1].key;
+
+
+
+                for (let i = 0; i < sortedValues.length; i++) {
+                    this.state.winnerArray.push(sortedValues[i])
+
+                }
+
+                await AsyncStorage.setItem('playerArray', JSON.stringify(this.state.winnerArray))
+            }
+            catch (error) {
+                console.log(error)
+            }
+        }
+
+
+    };
+
+
+    // async displayTimer() {
+    //     const { turn, timers } = this.state;
+    //     console.log("turn", turn, timers[turn])
+
+    //     // Clear any existing timer for the current player
+    //     if (timers[turn]) {
+    //         await clearTimeout(timers[turn]);
 
     //     }
 
-    //     else if (redName != "" && blueName != "" && yellowName != "") {
-    //         try {
-    //             const redValue = await AsyncStorage.getItem('red');
-    //             const yellowValue = await AsyncStorage.getItem('yellow');
-    //             const blueValue = await AsyncStorage.getItem('blue');
+    //     const timerId = setTimeout(() => {
+    //         this.moveToNextPlayer();
+    //     }, 15000);  // 15 seconds
 
-    //             const values = [
-    //                 { key: 'red', value: redValue },
-    //                 { key: 'yellow', value: yellowValue },
-    //                 { key: 'blue', value: blueValue },
-    //             ];
-    //             const sortedValues = values.sort((a, b) => b.value - a.value);
-    //             const firstGreatest = sortedValues[0].key;
-    //             const secondGreatest = sortedValues[1].key;
-    //             const thirdGreatest = sortedValues[2].key;
+    //     // Store the new timerId in the state
+    //     this.setState(prevState => ({
+    //         timers: {
+    //             ...prevState.timers,
+    //             [turn]: timerId
+    //         },
+    //         timerId: timerId
+    //     }));
+    //     Socket.emit('updateGameState', this.state);
+    // }
 
 
-             
-    //             for (let i = 0; i < sortedValues.length; i++) {
-    //                 this.state.winnerArray.push(sortedValues[i])
+    // async moveToNextPlayer() {
+    //     const { turn, timers } = this.state;
+
+    //     // Clear the current player's timer
+    //     if (timers[turn]) {
+    //         clearTimeout(timers[turn]);
+    //         this.setState(prevState => ({
+    //             timers: {
+    //                 ...prevState.timers,
+    //                 [this.state.turn]: null
+    //             }
+    //         }));
+    //         Socket.emit('updateGameState', this.state);
+
+    //         if (turn == BLUE) {
+
+    //             if (this.state.blueHeart > 1) {
+    //                 // Haptics.selectionAsync()
+    //                 this.setState({
+    //                     blueHeart: this.state.blueHeart - 1,
+    //                     showAlert: true
+    //                 })
+    //                 // Socket.emit('updateGameState', this.state);
+    //                 setTimeout(() => {
+    //                     this.setState({
+
+    //                         showAlert: false
+    //                     })
+    //                 }, 3000);
+
+
+    //             }
+    //             else if (this.state.blueHeart <= 1) {
+    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
+    //                 // console.log("356 called")
+    //                 this.props.onEnd()
 
     //             }
 
-    //             await AsyncStorage.setItem('playerArray', JSON.stringify(this.state.winnerArray))
+    //         }
+    //         if (turn == YELLOW) {
+
+    //             if (this.state.yellowHeart > 1) {
+    //                 // Haptics.selectionAsync()
+    //                 this.setState({
+    //                     yellowHeart: this.state.yellowHeart - 1,
+    //                     showAlert: true
+    //                 })
+    //                 // Socket.emit('updateGameState', this.state);
+
+    //                 setTimeout(() => {
+    //                     this.setState({
+
+    //                         showAlert: false
+    //                     })
+    //                 }, 3000);
+
+    //             }
+    //             else if (this.state.yellowHeart <= 1) {
+    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
+    //                 // console.log("381 called")
+    //                 this.props.onEnd()
+    //             }
+
+    //         }
+    //         if (turn == RED) {
+
+    //             if (this.state.redHeart > 1) {
+    //                 // Haptics.selectionAsync()
+    //                 this.setState({
+    //                     redHeart: this.state.redHeart - 1,
+    //                     showAlert: true
+    //                 })
+    //                 // Socket.emit('updateGameState', this.state);
+    //                 setTimeout(() => {
+    //                     this.setState({
+
+    //                         showAlert: false
+    //                     })
+    //                 }, 3000);
+
+
+    //             }
+    //             else if (this.state.redHeart <= 1) {
+    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
+    //                 //  console.log("405 called")
+    //                 this.props.onEnd()
+    //             }
+
+    //         }
+
+
+    //         if (turn == GREEN) {
+    //             // Haptics.selectionAsync()
+    //             if (this.state.greenHeart > 1) {
+    //                 this.setState({
+    //                     greenHeart: this.state.greenHeart - 1,
+    //                     showAlert: true
+    //                 })
+
+    //                 setTimeout(() => {
+    //                     this.setState({
+
+    //                         showAlert: false
+    //                     })
+    //                 }, 3000);
+
+    //             }
+    //             else if (this.state.greenHeart <= 1) {
+    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
+    //                 // console.log("429 called")
+    //                 this.props.onEnd()
+    //             }
 
 
     //         }
-    //         catch (error) {
-    //             console.log(error)
-    //         }
+    //           Socket.emit('updateGameState', this.state);
+    //     }
+
+    //     // Get the next player
+    //     const nextPlayer = this.getNextTurn();
+
+    //     // Update the current turn in the state
+    //     if (nextPlayer) {
+
+
+    //         this.setState({ animateForSelection: false, moves: [], turn: nextPlayer }, () => {
+    //             Socket.emit('updateGameState', this.state);
+    //             this.displayTimer()
+
+    //         })
+
+
+
+
+
+    //         // this.displayTimer()
+
+
     //     }
     //     else {
-
-    //         try {
-    //             const yellowValue = await AsyncStorage.getItem('yellow');
-    //             const blueValue = await AsyncStorage.getItem('blue');
-    //             const values = [
-    //                 { key: 'yellow', value: yellowValue },
-    //                 { key: 'blue', value: blueValue },
-    //             ];
-    //             const sortedValues = values.sort((a, b) => b.value - a.value);
-    //             const firstGreatest = sortedValues[0].key;
-    //             const secondGreatest = sortedValues[1].key;
-    //             // console.log('First Greatest Value:', firstGreatest);
-    //             // console.log('Second Greatest Value:', secondGreatest);
-
-
-    //             for (let i = 0; i < sortedValues.length; i++) {
-    //                 this.state.winnerArray.push(sortedValues[i])
-
-    //             }
-
-    //             await AsyncStorage.setItem('playerArray', JSON.stringify(this.state.winnerArray))
-    //         }
-    //         catch (error) {
-    //             console.log(error)
-    //         }
+    //         // Handle the game end or next round logic here
     //     }
+    // }
 
 
-    // };
+    async loadSound() {
+        try {
+            await this.rollingSound.loadAsync(require('../../../assets/diceSound.mp3'));
+
+        } catch (error) {
+            console.error('Error loading sound:', error);
+        }
+    }
+
+    async unloadSound() {
+        try {
+            await this.rollingSound.unloadAsync();
+        } catch (error) {
+            console.error('Error unloading sound:', error);
+        }
+    }
 
 
+    async loadPieceBiteSound() {
+        try {
+            await this.soundObject.loadAsync(require('../../../assets/biteSound.m4a'));
+        } catch (error) {
+            console.error('Failed to load sound', error);
+        }
+    }
 
-//   async  displayTimer() {
-//         const { turn, timers } = this.state;
-//         console.log("turn",turn,timers[turn])
+    async unLoadPieceBiteSound() {
+        try {
+            await this.soundObject.unloadAsync();
+        } catch (error) {
+            console.error('Error unloading sound:', error);
+        }
+    }
 
-//         // Clear any existing timer for the current player
-//         if (timers[turn]) {
-//             await clearTimeout(timers[turn]);
-          
-//         }
-
-//         const timerId = setTimeout(() => {
-//             this.moveToNextPlayer();
-//         }, 15000);  // 15 seconds
-
-//         // Store the new timerId in the state
-//         this.setState(prevState => ({
-//             timers: {
-//                 ...prevState.timers,
-//                 [turn]: timerId
-//             },
-//             timerId: timerId
-//         }));
-//     }
-
-
-//     async moveToNextPlayer() {
-//         const { turn, timers } = this.state;
-
-//         // Clear the current player's timer
-//         if (timers[turn]) {
-//             clearTimeout(timers[turn]);
-//             this.setState(prevState => ({
-//                 timers: {
-//                     ...prevState.timers,
-//                     [this.state.turn]: null
-//                 }
-//             }));
-
-//             if (turn == BLUE) {
-
-//                 if (this.state.blueHeart > 1) {
-//                     // Haptics.selectionAsync()
-//                     this.setState({
-//                         blueHeart: this.state.blueHeart - 1,
-//                         showAlert: true
-//                     })
-//                     setTimeout(() => {
-//                         this.setState({
-
-//                             showAlert: false
-//                         })
-//                     }, 3000);
-
-
-//                 }
-//                 else if (this.state.blueHeart <= 1) {
-//                     await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-//                     // console.log("356 called")
-//                     this.props.onEnd()
-
-//                 }
-
-//             }
-//             if (turn == YELLOW) {
-
-//                 if (this.state.yellowHeart > 1) {
-//                     // Haptics.selectionAsync()
-//                     this.setState({
-//                         yellowHeart: this.state.yellowHeart - 1,
-//                         showAlert: true
-//                     })
-
-//                     setTimeout(() => {
-//                         this.setState({
-
-//                             showAlert: false
-//                         })
-//                     }, 3000);
-
-//                 }
-//                 else if (this.state.yellowHeart <= 1) {
-//                     await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-//                     // console.log("381 called")
-//                     this.props.onEnd()
-//                 }
-
-//             }
-//             if (turn == RED) {
-
-//                 if (this.state.redHeart > 1) {
-//                     // Haptics.selectionAsync()
-//                     this.setState({
-//                         redHeart: this.state.redHeart - 1,
-//                         showAlert: true
-//                     })
-//                     setTimeout(() => {
-//                         this.setState({
-
-//                             showAlert: false
-//                         })
-//                     }, 3000);
-
-
-//                 }
-//                 else if (this.state.redHeart <= 1) {
-//                     await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-//                     //  console.log("405 called")
-//                     this.props.onEnd()
-//                 }
-
-//             }
-
-
-//             if (turn == GREEN) {
-//                 // Haptics.selectionAsync()
-//                 if (this.state.greenHeart > 1) {
-//                     this.setState({
-//                         greenHeart: this.state.greenHeart - 1,
-//                         showAlert: true
-//                     })
-//                     setTimeout(() => {
-//                         this.setState({
-
-//                             showAlert: false
-//                         })
-//                     }, 3000);
-
-//                 }
-//                 else if (this.state.greenHeart <= 1) {
-//                     await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-//                     // console.log("429 called")
-//                     this.props.onEnd()
-//                 }
-
-
-//             }
-//         }
-
-//         // Get the next player
-//         const nextPlayer = this.getNextTurn();
-
-//         // Update the current turn in the state
-//         if (nextPlayer) {
-
-
-//             this.setState({ animateForSelection: false, moves: [], turn: nextPlayer }, () => {
-//                 this.displayTimer()
-//             })
-
-
-
-
-//             // this.displayTimer()
-
-
-//         }
-//         else {
-//             // Handle the game end or next round logic here
-//         }
-//     }
-
-
-
-//     componentWillUnmount() {
-//         this.unloadSound();
-//         this.unLoadPieceBiteSound()
-//         clearInterval(this.intervalId);
-
-
-//     }
-
-
-//     async loadSound() {
-//         try {
-//             await this.rollingSound.loadAsync(require('../../../assets/diceSound.mp3'));
-
-//         } catch (error) {
-//             console.error('Error loading sound:', error);
-//         }
-//     }
-
-//     async unloadSound() {
-//         try {
-//             await this.rollingSound.unloadAsync();
-//         } catch (error) {
-//             console.error('Error unloading sound:', error);
-//         }
-//     }
-
-
-//     async loadPieceBiteSound() {
-//         try {
-//             await this.soundObject.loadAsync(require('../../../assets/biteSound.m4a')); 
-//           } catch (error) {
-//             console.error('Failed to load sound', error);
-//           }
-//     }
-
-//     async unLoadPieceBiteSound() {
-//         try {
-//             await this.soundObject.unloadAsync();
-//         } catch (error) {
-//             console.error('Error unloading sound:', error);
-//         }
-//     }
-
-//    async playSound() {
-//         try {
-//           await this.soundObject.replayAsync();
-//         } catch (error) {
-//           console.error('Failed to play sound', error);
-//         }
-//       };
+    async playSound() {
+        try {
+            await this.soundObject.replayAsync();
+        } catch (error) {
+            console.error('Failed to play sound', error);
+        }
+    };
 
     renderDiceIcons() {
         const { diceNumber, isRolling } = this.state;
@@ -647,10 +594,8 @@ export default class Game extends Component {
             return <FontAwesome5 name="dice-six" size={50} color="#fdfffc" />;
         }
 
-
-        return null; // Return null if the diceValue is not 1-6
+        return null;
     }
-
 
 
     initPlayer(playerType, color, playerName) {
@@ -681,81 +626,118 @@ export default class Game extends Component {
     render() {
         const { remainingTime } = this.state;
         const { redName, yellowName, greenName, blueName } = this.props;
-       
-        // this.socket.emit('activePlayer', {number:this.state.activePlayer})
-      
-        // console.log("607",this.state.activePlayerIndex)
-     
-    
-        // socket.emit('activePlayer', {number:this.state.activePlayer})
+
+
 
         return (
 
 
             <ImageBackground source={require("../../../assets/new.png")} style={{ flex: 1, alignItems: "center" }} >
 
- <Text style={{color:"white"}}> {this.state.activePlayerIndex}</Text>
-        {/* {console.log("632", this.state.activePlayerIndex)}   */}
-        <TouchableOpacity style={{
-        height: 100, width: 100, borderRadius: 50, borderColor: "#7b2cbf", borderWidth: 7, alignItems: "center", justifyContent: "center", padding: 5, position: "absolute",
-        bottom: "8.5%", left: "38%",
-    }}>
-        <View style={[styles.diceBtn3, {
-            backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : "red", borderWidth: 8,
-            borderColor: 'rgba(0,0,0,0.2)',
-        }]}>
 
-            <Animated.View
-                style={[
+                <View style={{ flexDirection: "row", width: Dimensions.get("screen").width, justifyContent: "space-around", alignItems: "center" }}>
+                    <TouchableOpacity style={{ height: 60, width: 60, borderRadius: 50, borderColor: "#7b2cbf", borderWidth: 4, alignItems: "center", justifyContent: "center" }}>
 
-                    {
-                        transform: [{ rotate: this.state.rollingRotation }],
-                        backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : null
-                    },
-                ]}
-            >
-                <TouchableOpacity onPress={this.onDiceRoll}>{this.renderDiceIcons()}</TouchableOpacity>
-            </Animated.View>
+                        <Ionicons name="settings-sharp" size={24} color="white" />
+                    </TouchableOpacity>
+
+                    <View style={{ width: 140, borderColor: "gray", borderWidth: 1, borderRadius: 20, alignItems: "center", flexDirection: "row", justifyContent: "center", padding: 4, marginTop: 40 }}>
+                        <MaterialIcons name="timer" size={28} color="white" />
+                        <Text allowFontScaling={false} style={{ fontSize: 20, color: "white", marginLeft: 3, fontWeight: "bold" }}>
+                            {this.formatTime(remainingTime)}
+                        </Text>
+                    </View>
 
 
-        </View>
-    </TouchableOpacity>
-{/* {
-    this.state.activePlayerIndex ==  0 ? 
-    <TouchableOpacity style={{
-        height: 100, width: 100, borderRadius: 50, borderColor: "#7b2cbf", borderWidth: 7, alignItems: "center", justifyContent: "center", padding: 5, position: "absolute",
-        bottom: "8.5%", left: "38%",
-    }}>
-        <View style={[styles.diceBtn3, {
-            backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : "red", borderWidth: 8,
-            borderColor: 'rgba(0,0,0,0.2)',
-        }]}>
-
-            <Animated.View
-                style={[
-
-                    {
-                        transform: [{ rotate: this.state.rollingRotation }],
-                        backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : null
-                    },
-                ]}
-            >
-                <TouchableOpacity onPress={this.onDiceRoll}>{this.renderDiceIcons()}</TouchableOpacity>
-            </Animated.View>
+                    <TouchableOpacity style={{ height: 45, width: 70, borderRadius: 30, borderColor: "#7b2cbf", borderWidth: 4, alignItems: "center", justifyContent: "center", padding: 5 }}>
+                        <Text allowFontScaling={false} style={{ color: "white", fontSize: 12 }}>Pot</Text>
+                        <Text allowFontScaling={false} style={{ color: "white", fontSize: 12 }}><FontAwesome name="rupee" size={12} color="white" /> 0.4</Text>
+                    </TouchableOpacity>
+                </View>
 
 
-        </View>
-    </TouchableOpacity>
-    :
-    <Text style={{color:"white"}}>Waiting for player1 to roll the dice</Text>
-} */}
-             
+                {/* {console.log(this.state.timers[RED])} */}
+
+                {
+                    this.state.timers[RED] || this.state.timers[GREEN] || this.state.timers[BLUE] || this.state.timers[YELLOW] ?
+
+                        <TouchableOpacity style={{
+                            height: 100, width: 100, borderRadius: 50, borderColor: "#7b2cbf", borderWidth: 7, alignItems: "center", justifyContent: "center", padding: 5, position: "absolute",
+                            bottom: "8.5%",
+                            left: "38%",
+                        }}>
+                            <CountdownCircleTimer
+                                isPlaying
+                                duration={15}
+                                colors={['#008000', '#F7B801', '#A30000', '#A30000']}
+                                colorsTime={[7, 5, 2, 0]}
+                                size={110}
+                                strokeWidth={7}
+                                strokeLinecap='square'
+
+                            >
+                                {({ remainingTime }) =>
+
+                                    <View style={[styles.diceBtn3, {
+                                        backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : "red", borderWidth: 8,
+                                        borderColor: 'rgba(0,0,0,0.2)',
+                                    }]}>
+
+                                        <Animated.View
+                                            style={[
+
+                                                {
+                                                    transform: [{ rotate: this.state.rollingRotation }],
+                                                    backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : null
+                                                },
+                                            ]}
+                                        >
+                                            <TouchableOpacity onPress={this.onDiceRoll}>{this.renderDiceIcons()}</TouchableOpacity>
+                                        </Animated.View>
+
+
+                                    </View>
+
+                                }
+
+                            </CountdownCircleTimer>
+                        </TouchableOpacity>
+                        :
+
+
+
+                        this.setTurn && <TouchableOpacity style={{
+                            height: 100, width: 100, borderRadius: 50, borderColor: "#7b2cbf", borderWidth: 7, alignItems: "center", justifyContent: "center", padding: 5, position: "absolute",
+                            bottom: "8.5%", left: "38%",
+                        }}>
+                            <View style={[styles.diceBtn3, {
+                                backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : "red", borderWidth: 8,
+                                borderColor: 'rgba(0,0,0,0.2)',
+                            }]}>
+
+                                <Animated.View
+                                    style={[
+
+                                        {
+                                            transform: [{ rotate: this.state.rollingRotation }],
+                                            backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : null
+                                        },
+                                    ]}
+                                >
+                                    <TouchableOpacity onPress={this.onDiceRoll}>{this.renderDiceIcons()}</TouchableOpacity>
+                                </Animated.View>
+
+
+                            </View>
+                        </TouchableOpacity>
+
+                }
 
                 <View style={styles.gameContainer}>
 
                     <View style={styles.twoPlayersContainer}>
 
-                        {this.renderPlayerBox(redName, this.state.red, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderTopLeftRadius: 20 })}
+                        {this.renderPlayerBox(redName, this.state.red, this.state.redScore, this.state.redHeart, this.state.timers[RED] != null ? true : false, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderTopLeftRadius: 20 })}
                         <VerticalCellsContainer position={TOP_VERTICAL}
                             state={this.state}
                             onPieceSelection={(selectedPiece) => {
@@ -778,7 +760,7 @@ export default class Game extends Component {
                                 this.onPieceSelection(selectedPiece);
                             }}
                         />
-                        {this.renderPlayerBox(greenName, this.state.green, this.state.greenScore, this.state.greenHeart, this.state.timers[GREEN]!= null ? true : false, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderBottomRightRadius: 0 })}
+                        {this.renderPlayerBox(greenName, this.state.green, this.state.greenScore, this.state.greenHeart, this.state.timers[GREEN] != null ? true : false, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderBottomRightRadius: 0 })}
                     </View>
                 </View>
 
@@ -813,16 +795,7 @@ export default class Game extends Component {
 
     async onDiceRoll() {
 
-        // const { timers, turn } = this.state
-        // if (timers[turn]) {
-        //     clearTimeout(timers[turn]);
-        //     this.setState(prevState => ({
-        //         timers: {
-        //             ...prevState.timers,
-        //             [this.state.turn]: null
-        //         }
-        //     }));
-        // }
+      
 
         const { diceRollTestDataIndex, diceRollTestData, animateForSelection } = this.state;
 
@@ -848,6 +821,7 @@ export default class Game extends Component {
 
 
         this.setState({ isRolling: true });
+        Socket.emit('updateGameState', this.state);
 
         this.rollingValue.setValue(0);
         Animated.timing(this.rollingValue, {
@@ -857,19 +831,20 @@ export default class Game extends Component {
         }).start(async () => {
             // Animation completed, update state and perform additional logic
             this.setState({ isRolling: false, diceNumber: this.getRandomInt(), diceRollTestDataIndex: updatedDiceRollTestDataIndex });
-
+            Socket.emit('updateGameState', this.state);
             // Delay before additional logic (100ms in your original code)
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const { moves, diceNumber, turn, extraChance, redScore, yellowScore, greenScore, blueScore } = this.state;
             moves.push(diceNumber);
+            console.log("dicenumber", diceNumber)
 
 
 
             if (diceNumber === 6) {
 
                 this.setState({ isRolling: false, moves: moves, extraChance: extraChance + 1, isWaitingForDiceRoll: false }, () => {
-
+                    Socket.emit('updateGameState', this.state);
                     this.updatePlayerPieces(this.state[turn])
 
                 });
@@ -877,9 +852,11 @@ export default class Game extends Component {
             }
             else {
                 this.setState({ isRolling: false, moves: moves, isWaitingForDiceRoll: false, extraChance: 0 }, () => {
+                    Socket.emit('updateGameState', this.state);
                     this.updatePlayerPieces(this.state[turn])
 
                 });
+
             }
 
 
@@ -902,6 +879,7 @@ export default class Game extends Component {
         const { turn, yellow, red, green, blue } = this.state;
         const { yellowName, blueName, greenName, redName } = this.props;
         this.setState({ isWaitingForDiceRoll: true })
+        Socket.emit('updateGameState', this.state);
 
         let isYellowNext = yellowName != "" && !this.isPlayerFinished(yellow);
         let isGreenNext = greenName != "" && !this.isPlayerFinished(green);
@@ -911,8 +889,8 @@ export default class Game extends Component {
 
         if (this.state.bonusCount > 0) {
             this.setState({ bonusCount: this.state.bonusCount - 1 });
+            Socket.emit('updateGameState', this.state);
             if (this.isPlayerFinished(this.state[turn])) {
-
                 // console.log("879")
                 return turn;
             }
@@ -1129,7 +1107,7 @@ export default class Game extends Component {
 
 
         if (piece.position == FINISHED) {
-            //  this.playSound()
+            this.playSound()
             // this.displayTimer()
             return true;
         }
@@ -1176,32 +1154,32 @@ export default class Game extends Component {
 
         const { red, blue, yellow, green } = this.state;
         if (piece.color != red.player && checkIfPositionMatchesExistingPiece(piece, red)) {
-            // this.playSound()
-            //     this.displayTimer()
-                 return true;
+            this.playSound()
+            // this.displayTimer()
+            return true;
         }
 
         if (piece.color != yellow.player && checkIfPositionMatchesExistingPiece(piece, yellow)) {
-            // this.playSound()
+            this.playSound()
             // this.displayTimer()
             return true;
         }
 
         if (piece.color != green.player && checkIfPositionMatchesExistingPiece(piece, green)) {
-            // this.playSound()
+            this.playSound()
             // this.displayTimer()
             return true;
         }
 
         if (piece.color != blue.player && checkIfPositionMatchesExistingPiece(piece, blue)) {
-            // this.playSound()
+            this.playSound()
             // this.displayTimer()
             return true;
 
         }
 
         if (this.state.extraChance >= 1) {
-            
+
             return true;
         }
 
@@ -1218,6 +1196,7 @@ export default class Game extends Component {
 
                 if (this.playerHasOptionsForMoves(player)) {
                     this.setState({ animateForSelection: true });
+                    Socket.emit('updateGameState', this.state);
                 }
                 else if (this.playerHasSinglePossibleMove(player)) {
                     if (this.playerHasSingleUnfinishedPiece(player)) {
@@ -1238,6 +1217,7 @@ export default class Game extends Component {
                             this.movePieceByPosition(piece, moves.shift());
                         } else {
                             this.setState({ animateForSelection: true })
+                            Socket.emit('updateGameState', this.state);
                         }
                     }
                 }
@@ -1254,6 +1234,10 @@ export default class Game extends Component {
 
 
                     this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false, })
+                     Socket.emit('changeTurn', this.socketId, this.setTurn )
+                    // this.getTurnValue()
+
+                    Socket.emit('updateGameState', this.state);
                 }
 
 
@@ -1262,10 +1246,16 @@ export default class Game extends Component {
 
             else {
                 this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false })
+                Socket.emit('changeTurn', this.socketId, this.setTurn )
+                // this.getTurnValue()
+                Socket.emit('updateGameState', this.state);
             }
         }
         else {
             this.setState({ turn: this.getNextTurn(), animateForSelection: false })
+            Socket.emit('changeTurn', this.socketId, this.setTurn )
+            // this.getTurnValue()
+            Socket.emit('updateGameState', this.state);
         }
     }
 
@@ -1290,6 +1280,7 @@ export default class Game extends Component {
                     [this.state.turn]: null
                 }
             }));
+            Socket.emit('updateGameState', this.state);
         }
         if (this.state.isWaitingForDiceRoll) {
             return;
@@ -1334,6 +1325,7 @@ export default class Game extends Component {
                         }
                     }
                 })
+                Socket.emit('updateGameState', this.state);
             }
 
             else {
@@ -1386,7 +1378,7 @@ export default class Game extends Component {
         return isMovePossible;
     }
 
-   async movePieceByPosition(piece, move, delay = 200) {
+    async movePieceByPosition(piece, move, delay = 200) {
 
         const { redScore, yellowScore, blueScore, greenScore } = this.state
         let newPosition = "";
@@ -1448,13 +1440,13 @@ export default class Game extends Component {
             piece.updateTime = new Date().getTime();
 
             {
-                console.log("move",move)
+                console.log("move", move)
             }
 
-         
-            if (move == 6  && this.state.extraChance >= 1) {
-            
-                // this.displayTimer();  
+
+            if (move == 6 && this.state.extraChance >= 1) {
+
+                // this.displayTimer();
             }
 
             if (piece.name == "one") {
@@ -1476,21 +1468,25 @@ export default class Game extends Component {
             if (piece.color == "red") {
                 redScore.push(move)
                 this.setState({ redScore: redScore })
+                Socket.emit('updateGameState', this.state);
                 // console.log("redScore", redScore)
             }
             if (piece.color == "yellow") {
                 yellowScore.push(move)
                 this.setState({ yellowScore: yellowScore })
+                Socket.emit('updateGameState', this.state);
                 // console.log("yellowScore", yellowScore)
             }
             if (piece.color == "blue") {
                 blueScore.push(move)
                 this.setState({ blueScore: blueScore })
+                Socket.emit('updateGameState', this.state);
                 // console.log("blueScore", blueScore)
             }
             if (piece.color == "green") {
                 greenScore.push(move)
                 this.setState({ greenScore: greenScore })
+                Socket.emit('updateGameState', this.state);
                 // console.log("greenScore", greenScore)
             }
 
@@ -1515,6 +1511,7 @@ export default class Game extends Component {
                 }
 
             })
+            Socket.emit('updateGameState', this.state);
         }
         else {
             this.setState(this.state, () => {
@@ -1525,11 +1522,15 @@ export default class Game extends Component {
 
                 } else if (this.state.moves.length == 0 || this.isPlayerFinished(player)) {
                     this.setState({ animateForSelection: false, moves: [], turn: this.getNextTurn() }, () => {
+                        Socket.emit('changeTurn', this.socketId, this.setTurn )
+                        // this.getTurnValue()
+                        Socket.emit('updateGameState', this.state);
                         // this.displayTimer()
                     })
 
                 }
             })
+            Socket.emit('updateGameState', this.state);
 
         }
 
@@ -1539,10 +1540,6 @@ export default class Game extends Component {
 
 
     renderPlayerBox(playerName, player, playerScore, lifeline, timer, customStyle) {
-        if (!player || !player.pieces) {
-            return null; // or render a loading state or placeholder
-        }
-
         const { one, two, three, four } = player.pieces;
         customStyle.opacity = this.state.turn == player.player ? 1 : 0.6;
         let hasSix = this.state.moves.filter((move) => move == 6).length > 0;
@@ -1559,7 +1556,7 @@ export default class Game extends Component {
                 customStyle={customStyle}
                 playerScore={playerScore}
                 getNextTurn={this.getNextTurn}
-                // movesHistory={player.diceValue} 
+
                 onPieceSelection={(selectedPiece) => {
                     if (this.state.turn == player.player) {
                         this.onPieceSelection(selectedPiece);
@@ -1760,100 +1757,3 @@ const styles = StyleSheet.create({
 
 
 
-{/* { this.state.showAlert &&  */ }
-
-{/* } */ }
-{/* {this.state.turn === RED && <Arrow1></Arrow1>}
-                {this.state.turn === YELLOW && <Arrow2></Arrow2>}
-                {this.state.turn === GREEN && <Arrow3></Arrow3>}
-                {this.state.turn === BLUE && <Arrow4></Arrow4>} */}
-{/* 
-                <View style={styles.redGotiBox}>
-                    <View style={{ height: "50%", width: "50%" }}>
-                        <RedGoti></RedGoti>
-                    </View>
-
-                </View>
-                <View style={styles.yellowGotiBox}>
-
-                    <View style={{ height: "50%", width: "50%" }}>
-                        <YellowGoti></YellowGoti>
-                    </View>
-
-                </View>
-                <View style={styles.blueGotiBox}>
-                    <View style={{ height: "50%", width: "50%" }}>
-                        <BlueGoti></BlueGoti></View>
-                </View>
-                <View style={styles.greenGotiBox}>
-                    <View style={{ height: "50%", width: "50%" }}>
-                        <GreenGoti></GreenGoti>
-                    </View>
-                </View> */}
-{/* <View style={styles.redDice}>
-
-                    <View style={styles.diceBtn1}>
-
-                        {this.state.turn == RED &&
-                            <Animated.View
-                                style={[
-
-                                    {
-                                        transform: [{ rotate: this.state.rollingRotation }],
-                                    },
-                                ]}
-                            >
-                                <TouchableOpacity onPress={this.onDiceRoll}>{this.renderDiceIcons()}</TouchableOpacity>
-                            </Animated.View>
-                        }
-                    </View>
-
-                </View>
-                <View style={styles.yellowDice}>
-
-                    <View style={styles.diceBtn2}>
-
-                        {this.state.turn == YELLOW &&
-                            <Animated.View
-                                style={[
-
-                                    {
-                                        transform: [{ rotate: this.state.rollingRotation }],
-                                    },
-                                ]}
-                            >
-                                <TouchableOpacity onPress={this.onDiceRoll}>{this.renderDiceIcons()}</TouchableOpacity>
-                            </Animated.View>
-                        }
-                    </View>
-
-                        {/* </View> */}
-{/* <View style={styles.greenDice}>
-                    <View style={styles.diceBtn1}>
-
-                        {this.state.turn == GREEN &&
-                            <Animated.View
-                                style={[
-
-                                    {
-                                        transform: [{ rotate: this.state.rollingRotation }],
-                                    },
-                                ]}
-
-                            >
-                                <TouchableOpacity onPress={this.onDiceRoll}>{this.renderDiceIcons()}</TouchableOpacity>
-                            </Animated.View>
-                        }
-                    </View>
-                </View> */}
-
-{/* <View style={{position:"absolute", top: 90, left: 60,}}>
-
-             
-                </View> */}
-
-// </View> */}
-{/* <View style={styles.blueDice}> */ }
-
-
-// in this my piece is directly olaced to the newposition if want to move my goti one place by place then how i do this

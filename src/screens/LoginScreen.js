@@ -9,15 +9,12 @@ import { CommonActions, useNavigation } from '@react-navigation/native';
 
 const LoginScreen = () => {
     const navigation = useNavigation();
-
     const [mobileNumber, setMobileNumber] = useState("");
     const [name, setName] = useState("");
-
     const [error, setErr] = useState("");
     const [isFormValid, setIsFormValid] = useState(false);
     const [user, setUser] = useState("");
     const [flag, setFlag] = useState(false)
-
     const [verified, setVerified] = useState(false)
 
     const getNumber = async () => {
@@ -44,40 +41,12 @@ const LoginScreen = () => {
         }
     };
 
-
-
     useEffect(() => {
         getNumber()
 
-    }, [])
+    })
 
-
-    useEffect(() => {
-        validateForm();
-    }, [mobileNumber, name]);
-
-    const validateForm = () => {
-        let errors = {};
-
-        // Validate name field
-        if (!name) {
-            errors.name = "Name is required.";
-        }
-
-
-
-        // Validate number field
-        if (!mobileNumber) {
-            errors.mobileNumber = "Mobile Number is required.";
-        } else if (mobileNumber.length >= 10) {
-            errors.mobileNumber = "Enter Valid Mobile Number";
-        }
-
-        // Set the errors and update form validity
-        setErr(errors);
-        setIsFormValid(Object.keys(errors).length === 0);
-    };
-
+ 
     const handleSubmit = async (name, mobileNumber) => {
 
 
@@ -91,17 +60,13 @@ const LoginScreen = () => {
                 // console.log(response.data); // Log the response data
                 try {
                     await AsyncStorage.setItem('user', JSON.stringify(mobileNumber));
-                    console.log("success")
-                    // console.log("red", total)
+                   
+                   
                 } catch (error) {
                     console.log("error", error)
-                    // Error saving data
+                    
                 }
 
-                let number = await AsyncStorage.getItem('user');
-
-                // console.log("27", number)
-                // console.log("96", mobileNumber)
 
                 navigation.navigate("App", {
 
