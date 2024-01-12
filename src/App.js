@@ -153,7 +153,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 const App = () => {
 
   const route = useRoute()
-  console.log("155", route.params.mobile)
+  // console.log("155", route.params.mobile)
   const [state, setState] = useState({
     isGameInProgress: false,
     isStartGameModalVisible: false,
@@ -164,7 +164,9 @@ const App = () => {
     blue: { name: '' },
     twoPlayer: false,
     threePlayer: false,
-    fourPlayer: false
+    fourPlayer: false,
+    currentPlayer: null,
+    nextPlayer:null
   });
 
 
@@ -202,6 +204,11 @@ clearAsyncStorageMultiple(keysToRemove).then(success => {
   const handlePlayerInput = (color, name) => {
     setState(prevState => ({ ...prevState, [color]: { name } }));
   };
+  const handleRoomValue = (room) => {
+    // console.log("207",room)
+    setState(prevState => ({ ...prevState, room: room }));
+  };
+
 
   if (state.isGameInProgress && !state.isGameEnd) {
     return (
@@ -210,6 +217,8 @@ clearAsyncStorageMultiple(keysToRemove).then(success => {
         yellowName={state.yellow.name}
         blueName={state.blue.name}
         greenName={state.green.name}
+        currentPlayer={state.currentPlayer}
+        nextPlayer={state.nextPlayer}
         isGameEnd={state.isGameEnd}
         onEnd={handleEndGame}
         number ={route.params.mobile}
@@ -227,6 +236,7 @@ clearAsyncStorageMultiple(keysToRemove).then(success => {
         onYellowInput={name => handlePlayerInput('yellow', name)}
         onGreenInput={name => handlePlayerInput('green', name)}
         onBlueInput={name => handlePlayerInput('blue', name)}
+      
       />
     );
   } else {
@@ -245,6 +255,8 @@ clearAsyncStorageMultiple(keysToRemove).then(success => {
         onGreenInput={name => handlePlayerInput('green', name)}
         onBlueInput={name => handlePlayerInput('blue', name)}
         mobileNumber = {route.params.mobile}
+        setCurrentNextPlayer = {(cp,np)=>setState(prevState => ({ ...prevState, currentPlayer:cp, nextPlayer:np }))}
+                                             
       />
     );
   }

@@ -167,21 +167,7 @@ export default PlayerBox = ({ color, customStyle, lifeline, one, two, three, fou
 
             return (
                 <TouchableOpacity style={{ flex: 1 }} onPress={() => { onPieceSelection(piece) }}>
-                    {/* <View style={[styles.circle, { backgroundColor: color, borderRadius: 20 }]}>
-
-                     
-
-
-                        {console.log(isAnimating)}
-
-
-                        { playerName !== "" ? backgroundColor == "#ec1d27"  ? isAnimating ? <ReadyRed></ReadyRed> : <RedGoti></RedGoti> : null:null}
-
-                       
-                        {playerName !== "" ?backgroundColor == "#01A147"  ? isAnimating ? <ReadyGreen></ReadyGreen> : <GreenGoti></GreenGoti> : null : null}
-                        {playerName !== "" ? backgroundColor == "#ffe01b" ? isAnimating ? <ReadyYellow></ReadyYellow> : <YellowGoti></YellowGoti> : null:null}
-                        {playerName !== "" ?backgroundColor == "#29b6f6" ? isAnimating ? <ReadyBlue></ReadyBlue> : <BlueGoti></BlueGoti> : null:null}
-                    </View> */}
+                  
                 </TouchableOpacity>
 
 
@@ -190,9 +176,7 @@ export default PlayerBox = ({ color, customStyle, lifeline, one, two, three, fou
         }
         return (
             <TouchableOpacity style={{ flex: 1 }}>
-                {/* <View style={[styles.circle, { backgroundColor: backgroundColor, borderRadius: 20 }]}>
-
-                </View> */}
+         
             </TouchableOpacity>
         );
     }
@@ -214,7 +198,7 @@ export default PlayerBox = ({ color, customStyle, lifeline, one, two, three, fou
 
 
                         <View style={{ alignItems: "flex-end", padding: 10, flex: 1 }}>
-
+                   
 
                             {
                                 timer ?

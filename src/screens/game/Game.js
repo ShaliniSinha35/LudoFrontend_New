@@ -26,7 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Haptics } from 'expo-haptics';
 import { FontAwesome } from '@expo/vector-icons';
 import Socket from '../../../utils/Socket';
-import socket from '../../../utils/Socket';
+
 
 
 export default class Game extends Component {
@@ -35,17 +35,15 @@ export default class Game extends Component {
         // console.log(props)
         super(props);
         const { red, blue, yellow, green } = colors;
-        const { redName, blueName, yellowName, greenName, twoPlayer, threePlayer, fourPlayer, number } = props;
+        const { redName, blueName, yellowName, greenName, twoPlayer, threePlayer, fourPlayer, number, currentPlayer, nextPlayer } = props;
         this.intervalId = null
         this.rollingSound = new Audio.Sound();
         this.soundObject = new Audio.Sound();
         this.rollingValue = new Animated.Value(0);
         this.onDiceRoll = this.onDiceRoll.bind(this);
-        this.setTurn = false
-        this.socketId = null
         this.state = {
-            activePlayer: number,
-            activePlayerIndex: null,
+            currentPlayer: currentPlayer,
+            nextPlayer: nextPlayer,
             red: this.initPlayer(RED, red, redName),
             yellow: this.initPlayer(YELLOW, yellow, yellowName),
             green: this.initPlayer(GREEN, green, greenName),
@@ -88,13 +86,10 @@ export default class Game extends Component {
             showAlert: false,
             timerId: null,
             keysToRemove: ['red', 'green', 'blue', 'yellow'],
-
-            gameState: {
-                red: this.initPlayer(RED, red, redName),
-                yellow: this.initPlayer(YELLOW, yellow, yellowName),
-                green: this.initPlayer(GREEN, green, greenName),
-                blue: this.initPlayer(BLUE, blue, blueName),
-            },
+            setTurn: false,
+            socketId: null,
+            setTimer: false,
+            setIsTimerActive: false
 
 
         }
@@ -103,17 +98,7 @@ export default class Game extends Component {
 
     }
 
-    // getTurnValue() {
-    //     if (socket) {
-    //         Socket.on('socketId', (socketId) => {
-    //             console.log("116", socketId)
-    //             this.socketId = socketId
-    //             console.log("this.socketId", this.socketId)
 
-    //             Socket.emit('changeTurn', this.socketId, this.setTurn)
-    //         });
-    //     }
-    // }
 
 
 
@@ -123,28 +108,31 @@ export default class Game extends Component {
         // this.displayTimer();
         this.startTimer()
 
-        // this.getTurnValue()
-
+        // Listen for 'getTimer' events from the server
+       Socket.on('getTimer', (value) => {
+        this.setState({ setIsTimerActive: value });
+       });
+  
+      // Listen for 'updateTimerState' events from the server
+      Socket.on('updateTimerState', (timerData) => {
+        this.handleTimerUpdate(timerData);
+       });
+        //update gamestate
         Socket.on('broadcastGameState', ({ gameState }) => {
             // console.log('Received broadcasted gameState:', gameState);
 
             // Update the component state with the received gameState
             this.setState({
-                activePlayer: gameState.activePlayer,
-
-                activePlayerIndex: gameState.activePlayerIndex,
                 red: gameState.red,
                 yellow: gameState.yellow,
                 green: gameState.green,
-                blue: gameState.blue,
-                // isRolling: gameState.isRolling,
+                blue: gameState.blue,  // isRolling: gameState.isRolling,
                 diceNumber: gameState.diceNumber,
-                bonusCount: gameState.bonusCount,
                 isWaitingForDiceRoll: gameState.isWaitingForDiceRoll,
                 turn: gameState.turn,
-                diceRollTestData: gameState.diceRollTestData,
-                diceRollTestDataIndex: gameState.diceRollTestDataIndex,
-                extraChance: gameState.extraChance,
+                // diceRollTestData: gameState.diceRollTestData,
+                // diceRollTestDataIndex: gameState.diceRollTestDataIndex,
+                // extraChance: gameState.extraChance,
                 redScore: gameState.redScore,
                 blueScore: gameState.blueScore,
                 greenScore: gameState.greenScore,
@@ -154,14 +142,19 @@ export default class Game extends Component {
                 greenHeart: gameState.greenHeart,
                 yellowHeart: gameState.yellowHeart,
                 remainingTime: gameState.remainingTime, // 3 minutes in seconds,
-                keysToRemove: gameState.keysToRemove,
+                // keysToRemove: gameState.keysToRemove,
+                timers: {
+                    RED: null,
+                    YELLOW: null,
+                    GREEN: null,
+                    BLUE: null,
+                },
             })
         })
-
-
-        Socket.on('setTurn', (value) => {
-            console.log('158', value, this.socketId)
-            this.setTurn = value
+        //getTurn
+        Socket.on('getTurn', (value) => {
+            console.log("143 turn", this.state.currentPlayer, value)
+            this.setState({ setTurn: value })
         })
 
         this.clearAsyncStorageMultiple(this.state.keysToRemove).then(success => {
@@ -181,9 +174,31 @@ export default class Game extends Component {
         this.unloadSound();
         this.unLoadPieceBiteSound()
         clearInterval(this.intervalId);
-        Socket.emit('disconnectUser', { user: this.state.activePlayer })
-    }
+        this.clearAllTimers();
+        Socket.off('getTimer');
+        Socket.off('updateTimerState');
+        // Socket.emit('disconnectUser', { user: this.state.activePlayer })
 
+    }
+    clearAllTimers() {
+        // Clear all existing timers
+        const { timers } = this.state;
+        Object.values(timers).forEach((timer) => {
+          if (timer) {
+            clearTimeout(timer);
+          }
+        });
+    
+        // Clear timers in the state
+        this.setState({
+          timers: {
+            RED: null,
+            YELLOW: null,
+            GREEN: null,
+            BLUE: null,
+          },
+        });
+      }
 
     formatTime = (time) => {
         const minutes = Math.floor(time / 60);
@@ -221,8 +236,6 @@ export default class Game extends Component {
             return false; // Indicates failure
         }
     };
-
-
 
 
     startTimer() {
@@ -353,176 +366,174 @@ export default class Game extends Component {
     };
 
 
-    // async displayTimer() {
-    //     const { turn, timers } = this.state;
-    //     console.log("turn", turn, timers[turn])
 
-    //     // Clear any existing timer for the current player
-    //     if (timers[turn]) {
-    //         await clearTimeout(timers[turn]);
-
-    //     }
-
-    //     const timerId = setTimeout(() => {
-    //         this.moveToNextPlayer();
-    //     }, 15000);  // 15 seconds
-
-    //     // Store the new timerId in the state
-    //     this.setState(prevState => ({
-    //         timers: {
-    //             ...prevState.timers,
-    //             [turn]: timerId
-    //         },
-    //         timerId: timerId
-    //     }));
-    //     Socket.emit('updateGameState', this.state);
-    // }
-
-
-    // async moveToNextPlayer() {
-    //     const { turn, timers } = this.state;
-
-    //     // Clear the current player's timer
-    //     if (timers[turn]) {
-    //         clearTimeout(timers[turn]);
-    //         this.setState(prevState => ({
-    //             timers: {
-    //                 ...prevState.timers,
-    //                 [this.state.turn]: null
-    //             }
-    //         }));
-    //         Socket.emit('updateGameState', this.state);
-
-    //         if (turn == BLUE) {
-
-    //             if (this.state.blueHeart > 1) {
-    //                 // Haptics.selectionAsync()
-    //                 this.setState({
-    //                     blueHeart: this.state.blueHeart - 1,
-    //                     showAlert: true
-    //                 })
-    //                 // Socket.emit('updateGameState', this.state);
-    //                 setTimeout(() => {
-    //                     this.setState({
-
-    //                         showAlert: false
-    //                     })
-    //                 }, 3000);
+    displayTimer() {
+        const { turn, timers } = this.state;
+    
+        // Clear any existing timer for the current player
+        if (timers[turn]) {
+          clearTimeout(timers[turn]);
+        }
+    
+        // Set a new timer for the current player
+        const timerId = setTimeout(() => {
+          this.moveToNextPlayer();
+        }, 15000); // 15 seconds
+    
+        // Store the new timerId in the state
+        this.setState((prevState) => ({
+          timers: {
+            ...prevState.timers,
+            [turn]: timerId,
+          },
+        }));
+      }
+    
+      handleTimerUpdate(timerData) {
+        const { currentPlayer, remainingTime } = timerData;
+    
+        // Handle timer updates received from the server
+        // For example, you might update the UI to show the remaining time
+        console.log(`Received timer update for ${currentPlayer}. Remaining time: ${remainingTime} milliseconds`);
+      }
 
 
-    //             }
-    //             else if (this.state.blueHeart <= 1) {
-    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
-    //                 // console.log("356 called")
-    //                 this.props.onEnd()
+    async moveToNextPlayer() {
+        const { turn, timers } = this.state;
 
-    //             }
+        // Clear the current player's timer
+        if (timers[turn]) {
+            clearTimeout(timers[turn]);
+            this.setState(prevState => ({
+                timers: {
+                    ...prevState.timers,
+                    [this.state.turn]: null
+                }
+            }));
 
-    //         }
-    //         if (turn == YELLOW) {
+            if (turn == BLUE) {
 
-    //             if (this.state.yellowHeart > 1) {
-    //                 // Haptics.selectionAsync()
-    //                 this.setState({
-    //                     yellowHeart: this.state.yellowHeart - 1,
-    //                     showAlert: true
-    //                 })
-    //                 // Socket.emit('updateGameState', this.state);
+                if (this.state.blueHeart > 1) {
+                    // Haptics.selectionAsync()
+                    this.setState({
+                        blueHeart: this.state.blueHeart - 1,
+                        showAlert: true
+                    })
+                    setTimeout(() => {
+                        this.setState({
 
-    //                 setTimeout(() => {
-    //                     this.setState({
-
-    //                         showAlert: false
-    //                     })
-    //                 }, 3000);
-
-    //             }
-    //             else if (this.state.yellowHeart <= 1) {
-    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
-    //                 // console.log("381 called")
-    //                 this.props.onEnd()
-    //             }
-
-    //         }
-    //         if (turn == RED) {
-
-    //             if (this.state.redHeart > 1) {
-    //                 // Haptics.selectionAsync()
-    //                 this.setState({
-    //                     redHeart: this.state.redHeart - 1,
-    //                     showAlert: true
-    //                 })
-    //                 // Socket.emit('updateGameState', this.state);
-    //                 setTimeout(() => {
-    //                     this.setState({
-
-    //                         showAlert: false
-    //                     })
-    //                 }, 3000);
+                            showAlert: false
+                        })
+                    }, 3000);
 
 
-    //             }
-    //             else if (this.state.redHeart <= 1) {
-    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
-    //                 //  console.log("405 called")
-    //                 this.props.onEnd()
-    //             }
+                }
+                else if (this.state.blueHeart <= 1) {
+                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
+                    // console.log("356 called")
+                    this.props.onEnd()
 
-    //         }
+                }
+
+            }
+            if (turn == YELLOW) {
+
+                if (this.state.yellowHeart > 1) {
+                    // Haptics.selectionAsync()
+                    this.setState({
+                        yellowHeart: this.state.yellowHeart - 1,
+                        showAlert: true
+                    })
+
+                    setTimeout(() => {
+                        this.setState({
+
+                            showAlert: false
+                        })
+                    }, 3000);
+
+                }
+                else if (this.state.yellowHeart <= 1) {
+                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
+                    // console.log("381 called")
+                    this.props.onEnd()
+                }
+
+            }
+            if (turn == RED) {
+
+                if (this.state.redHeart > 1) {
+                    // Haptics.selectionAsync()
+                    this.setState({
+                        redHeart: this.state.redHeart - 1,
+                        showAlert: true
+                    })
+                    setTimeout(() => {
+                        this.setState({
+
+                            showAlert: false
+                        })
+                    }, 3000);
 
 
-    //         if (turn == GREEN) {
-    //             // Haptics.selectionAsync()
-    //             if (this.state.greenHeart > 1) {
-    //                 this.setState({
-    //                     greenHeart: this.state.greenHeart - 1,
-    //                     showAlert: true
-    //                 })
+                }
+                else if (this.state.redHeart <= 1) {
+                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
+                    //  console.log("405 called")
+                    this.props.onEnd()
+                }
 
-    //                 setTimeout(() => {
-    //                     this.setState({
+            }
+            if (turn == GREEN) {
+                // Haptics.selectionAsync()
+                if (this.state.greenHeart > 1) {
+                    this.setState({
+                        greenHeart: this.state.greenHeart - 1,
+                        showAlert: true
+                    })
+                    setTimeout(() => {
+                        this.setState({
 
-    //                         showAlert: false
-    //                     })
-    //                 }, 3000);
+                            showAlert: false
+                        })
+                    }, 3000);
 
-    //             }
-    //             else if (this.state.greenHeart <= 1) {
-    //                 await this.clearAsyncStorageMultiple(this.state.keysToRemove)
-    //                 // console.log("429 called")
-    //                 this.props.onEnd()
-    //             }
-
-
-    //         }
-    //           Socket.emit('updateGameState', this.state);
-    //     }
-
-    //     // Get the next player
-    //     const nextPlayer = this.getNextTurn();
-
-    //     // Update the current turn in the state
-    //     if (nextPlayer) {
+                }
+                else if (this.state.greenHeart <= 1) {
+                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
+                    // console.log("429 called")
+                    this.props.onEnd()
+                }
 
 
-    //         this.setState({ animateForSelection: false, moves: [], turn: nextPlayer }, () => {
-    //             Socket.emit('updateGameState', this.state);
-    //             this.displayTimer()
+            }
+        }
 
-    //         })
+        // Get the next player
+        const nextPlayer = this.getNextTurn();
+
+        // Update the current turn in the state
+        if (nextPlayer) {
+
+
+            this.setState({ animateForSelection: false, moves: [], turn: nextPlayer }, () => {
+                this.displayTimer()
+            })
 
 
 
 
+            // this.displayTimer()
 
-    //         // this.displayTimer()
+
+        }
+        else {
+            // Handle the game end or next round logic here
+        }
+    }
 
 
-    //     }
-    //     else {
-    //         // Handle the game end or next round logic here
-    //     }
-    // }
+
 
 
     async loadSound() {
@@ -624,7 +635,7 @@ export default class Game extends Component {
 
 
     render() {
-        const { remainingTime } = this.state;
+        const { remainingTime, turn } = this.state;
         const { redName, yellowName, greenName, blueName } = this.props;
 
 
@@ -656,10 +667,12 @@ export default class Game extends Component {
                 </View>
 
 
-                {/* {console.log(this.state.timers[RED])} */}
+                {console.log("627", this.state.setIsTimerActive, this.state.currentPlayer)}
 
                 {
-                    this.state.timers[RED] || this.state.timers[GREEN] || this.state.timers[BLUE] || this.state.timers[YELLOW] ?
+
+                    this.state.setTurn &&
+                        this.state.timerId ?
 
                         <TouchableOpacity style={{
                             height: 100, width: 100, borderRadius: 50, borderColor: "#7b2cbf", borderWidth: 7, alignItems: "center", justifyContent: "center", padding: 5, position: "absolute",
@@ -704,9 +717,7 @@ export default class Game extends Component {
                         </TouchableOpacity>
                         :
 
-
-
-                        this.setTurn && <TouchableOpacity style={{
+                        this.state.setTurn && <TouchableOpacity style={{
                             height: 100, width: 100, borderRadius: 50, borderColor: "#7b2cbf", borderWidth: 7, alignItems: "center", justifyContent: "center", padding: 5, position: "absolute",
                             bottom: "8.5%", left: "38%",
                         }}>
@@ -795,7 +806,7 @@ export default class Game extends Component {
 
     async onDiceRoll() {
 
-      
+
 
         const { diceRollTestDataIndex, diceRollTestData, animateForSelection } = this.state;
 
@@ -837,7 +848,7 @@ export default class Game extends Component {
 
             const { moves, diceNumber, turn, extraChance, redScore, yellowScore, greenScore, blueScore } = this.state;
             moves.push(diceNumber);
-            console.log("dicenumber", diceNumber)
+            // console.log("dicenumber", diceNumber)
 
 
 
@@ -866,13 +877,10 @@ export default class Game extends Component {
 
     }
 
-
-
     isPlayerFinished(player) {
         const { one, two, three, four } = player.pieces;
         return one.position === FINISHED && two.position === FINISHED && three.position === FINISHED && four.position === FINISHED;
     }
-
 
     getNextTurn() {
 
@@ -923,7 +931,6 @@ export default class Game extends Component {
                 return turn;
         }
     }
-
 
     playerHasSingleUnfinishedPiece(player) {
         const { one, two, three, four } = player.pieces;
@@ -1233,8 +1240,13 @@ export default class Game extends Component {
 
 
 
-                    this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false, })
-                     Socket.emit('changeTurn', this.socketId, this.setTurn )
+                    this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false, }, () => {
+                        Socket.emit('changeTurn', {
+                            currentPlayer: this.state.currentPlayer, // Your socket ID
+                            nextPlayer: this.state.nextPlayer // Other player's socket ID
+                        })
+                    })
+
                     // this.getTurnValue()
 
                     Socket.emit('updateGameState', this.state);
@@ -1245,15 +1257,25 @@ export default class Game extends Component {
             }
 
             else {
-                this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false })
-                Socket.emit('changeTurn', this.socketId, this.setTurn )
+                this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false }, () => {
+                    Socket.emit('changeTurn', {
+                        currentPlayer: this.state.currentPlayer, // Your socket ID
+                        nextPlayer: this.state.nextPlayer // Other player's socket ID
+                    })
+                })
+
                 // this.getTurnValue()
                 Socket.emit('updateGameState', this.state);
             }
         }
         else {
-            this.setState({ turn: this.getNextTurn(), animateForSelection: false })
-            Socket.emit('changeTurn', this.socketId, this.setTurn )
+            this.setState({ turn: this.getNextTurn(), animateForSelection: false }, () => {
+                Socket.emit('changeTurn', {
+                    currentPlayer: this.state.currentPlayer, // Your socket ID
+                    nextPlayer: this.state.nextPlayer // Other player's socket ID
+                })
+            })
+
             // this.getTurnValue()
             Socket.emit('updateGameState', this.state);
         }
@@ -1271,17 +1293,10 @@ export default class Game extends Component {
     onPieceSelection = async (selectedPiece) => {
 
 
-        const { timers, turn } = this.state
-        if (timers[turn]) {
-            await clearTimeout(timers[turn]);
-            await this.setState(prevState => ({
-                timers: {
-                    ...prevState.timers,
-                    [this.state.turn]: null
-                }
-            }));
-            Socket.emit('updateGameState', this.state);
-        }
+
+        this.stopTimer()
+
+
         if (this.state.isWaitingForDiceRoll) {
             return;
         }
@@ -1439,9 +1454,9 @@ export default class Game extends Component {
             piece.position = newPosition;
             piece.updateTime = new Date().getTime();
 
-            {
-                console.log("move", move)
-            }
+            // {
+            //     console.log("move", move)
+            // }
 
 
             if (move == 6 && this.state.extraChance >= 1) {
@@ -1522,8 +1537,11 @@ export default class Game extends Component {
 
                 } else if (this.state.moves.length == 0 || this.isPlayerFinished(player)) {
                     this.setState({ animateForSelection: false, moves: [], turn: this.getNextTurn() }, () => {
-                        Socket.emit('changeTurn', this.socketId, this.setTurn )
-                        // this.getTurnValue()
+                        Socket.emit('changeTurn', {
+                            currentPlayer: this.state.currentPlayer, // Your socket ID
+                            nextPlayer: this.state.nextPlayer // Other player's socket ID
+                        })
+
                         Socket.emit('updateGameState', this.state);
                         // this.displayTimer()
                     })
@@ -1536,8 +1554,6 @@ export default class Game extends Component {
 
 
     }
-
-
 
     renderPlayerBox(playerName, player, playerScore, lifeline, timer, customStyle) {
         const { one, two, three, four } = player.pieces;
@@ -1592,7 +1608,8 @@ const styles = StyleSheet.create({
         elevation: 8,
         backgroundColor: '#fff',
         alignSelf: 'center',
-        marginTop: 65
+        // 65
+        marginTop: 15
     },
     twoPlayersContainer: {
         flex: 4,
@@ -1757,3 +1774,4 @@ const styles = StyleSheet.create({
 
 
 
+// i want to add 15sec timer to currentplayer to move the piece if it move the piece within 15 sec then i stop the timer and change the turn value but if the player got six and bites other player goti then i want to start again timer and when it move the piece within 15 sec then change the turn

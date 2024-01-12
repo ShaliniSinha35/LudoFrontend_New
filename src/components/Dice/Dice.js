@@ -156,7 +156,7 @@ export default Dice = ({isRolling,turn,onDiceRoll,diceNumber, rollingRotation, r
      
    
 
-<View style={[styles.textStyle, {flex:1}]}>
+<View style={[styles.textStyle, {flex:1,overflow:"hidden"}]}>
 
 <View style={{
   flex:1,

@@ -16,12 +16,15 @@ export default Home = ({
     onYellowInput,
     onBlueInput,
     onGreenInput,
+
     red,
     yellow,
     green,
     blue,
     onStart,
-    twoPlayer,threePlayer,fourPlayer, mobileNumber
+    twoPlayer,threePlayer,fourPlayer, mobileNumber,
+    setCurrentNextPlayer
+
 }) => {
 
     const [selectedPlayers, setSelectedPlayers] = useState(null);
@@ -30,6 +33,8 @@ export default Home = ({
     const [roomStatus, setRoomStatus] = useState(null);
      const [roomId,setRoomId] = useState(null)
      const [socketId, setSocketId] = useState(null)
+     const[currentPlayer,setCurrentPlayer] = useState(null)
+     const[nextPlayer,setNextPlayer] = useState(null)
    
     const [flag,setFlag] = useState('')
 
@@ -49,7 +54,9 @@ export default Home = ({
     // };
     // }, []);
 
-let id = ''
+  let cp = ''
+  let np = ''
+
 
     useEffect(() => {
       Socket.on('roomId', (roomId) => {
@@ -57,12 +64,12 @@ let id = ''
        
         // console.log("58",roomId)
       });
-      Socket.on('socketId', (socketId) => {
-        // console.log("77", socketId)
-         id= socketId
-         setSocketId(id)
+      // Socket.on('socketId', (socketId) => {
+      //   // console.log("77", socketId)
+      //    id= socketId
+      //    setSocketId(id)
        
-      });
+      // });
   
       Socket.on('roomStatus', (room) => {
         setRoomStatus(room);
@@ -75,15 +82,38 @@ let id = ''
                setFlag('')
                onBlueInput(room.users[0])
                onYellowInput(room.users[1])
+               
+               if(room.users[0] == mobileNumber){
+                  cp = room.sockets[0]
+                  np = room.sockets[1]
+                  setCurrentPlayer(room.sockets[0])
+                  setNextPlayer(room.sockets[1])
+                  setCurrentNextPlayer(cp,np)
+               }
+               else{
+                cp = room.sockets[1]
+                np = room.sockets[0]
+                setCurrentPlayer(room.sockets[1])
+                setNextPlayer(room.sockets[0])
+                setCurrentNextPlayer(cp,np)
+               }
+
+
+
+  //  console.log("100",currentPlayer,cp)
+  //  console.log("101",nextPlayer,np)
+                                         
+     
+              // console.log("80",room)
+
+           
+            
 
               //  console.log('room user 1', room.users[0], mobileNumber)
               //  console.log('room user 2', room.users[1], mobileNumber)
 
               
-               if(room.users[0] == mobileNumber && id != '' ){
-                // console.log("80",id)
-                socket.emit('socketId', id)
-              }
+              
                
          
               
@@ -97,6 +127,7 @@ let id = ''
         Socket.off('roomStatus');
         Socket.off('startTwoPlayerGame');
         Socket.emit('disconnectUser', { user: mobileNumber })
+     
       };
     }, []);
 
