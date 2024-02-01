@@ -13,13 +13,17 @@ const [bluePlayer,setBlue]= useState(props.blue.name)
 const [yellowPlayer,setYellow]= useState(props.yellow.name)
 const [redPlayer,setRed]= useState(props.red.name)
 const [greenPlayer,setGreen]= useState(props.green.name)
+const keysToRemove= ['red', 'green', 'blue', 'yellow']
+const [result,setResult]= useState(null)
 // console.log(props)
 
 const getPlayerDetails = async()=>{
     try{
         const res = await AsyncStorage.getItem('playerArray' || '0')
         console.log(res)
-        setPlayerArr(JSON.parse(res))
+        const res1 = await AsyncStorage.getItem('result' || '0')
+        console.log(res1)
+        setResult(JSON.parse(res1))
     }
     catch(err){
         console.log(err)
@@ -27,21 +31,42 @@ const getPlayerDetails = async()=>{
      
 }
 
-   useEffect(()=>{
+  useEffect(()=>{
     getPlayerDetails()
    },[])
 
-  
+    // useEffect(() => {
+    //     const backAction = () => {
+    //       Alert.alert('Hold on!', 'Are you sure you want to go back?', [
+    //         {
+    //           text: 'Cancel',
+    //           onPress: () => null,
+    //           style: 'cancel',
+    //         },
+    //         {text: 'YES', onPress: () => BackHandler.exitApp()},
+    //       ]);
+    //       return true;
+
+    //     };
+    
+    //     const backHandler = BackHandler.addEventListener(
+    //       'hardwareBackPress',
+    //       backAction,
+    //     );
+    
+    //     return () => backHandler.remove();
+    //   }, []);
 
 
-    const handlePlay =async()=>{
+    const handlePlay =()=>{
+
+
       props.backToHome()
       props.onRedInput('')
       props.onBlueInput('')
       props.onYellowInput('')
       props.onGreenInput('')
-
-      await AsyncStorage.removeItem('playerArray'); 
+      
 
     }
 
@@ -111,19 +136,40 @@ const getPlayerDetails = async()=>{
   </ImageBackground>
 
 :
-<ImageBackground source={require("../../../assets/bg.png") }style={{backgroundColor:"#03045e",flex:1,height:Dimensions.get('screen').height, width:Dimensions.get('screen').width, alignItems:"center", paddingTop:100}}>
 
-<View style={{flex:1, alignItems:"center"}}>
-<MaterialCommunityIcons name="heart-broken" size={45} color="white" style={{margin:20}} />
-  <Text allowFontScaling={false} style={{color:"white", fontSize:20,margin:20}}>Game Over</Text>
-  <Text allowFontScaling={false} style={{color:"gray", fontSize:15}}>You lost because you missed 3 turns.</Text>
 
-  <TouchableOpacity style={{width:"auto", position:"absolute", flexDirection:"row", bottom:20}} onPress={()=>handlePlay()} title='Play Again'>
-   <MaterialIcons name="home" size={24} color="white"/>
-     <Text allowFontScaling={false} style={{color:"white",fontSize:18}}> Home</Text>
-   </TouchableOpacity>
-</View>
-</ImageBackground>
+ result!=null && result.lost == props.currentPlayer ?
+  <ImageBackground source={require("../../../assets/bg.png") }style={{backgroundColor:"#03045e",flex:1,height:Dimensions.get('screen').height, width:Dimensions.get('screen').width, alignItems:"center", paddingTop:100}}>
+
+  <View style={{flex:1, alignItems:"center"}}>
+  <MaterialCommunityIcons name="heart-broken" size={45} color="white" style={{margin:20}} />
+    <Text allowFontScaling={false} style={{color:"white", fontSize:20,margin:20}}>Game Over</Text>
+    <Text allowFontScaling={false} style={{color:"gray", fontSize:15}}>You lost because you missed 3 turns.</Text>
+  
+    <TouchableOpacity style={{width:"auto", position:"absolute", flexDirection:"row", bottom:20}} onPress={()=>handlePlay()} title='Play Again'>
+     <MaterialIcons name="home" size={24} color="white"/>
+       <Text allowFontScaling={false} style={{color:"white",fontSize:18}}> Home</Text>
+     </TouchableOpacity>
+  </View>
+  </ImageBackground>
+
+  :
+  <ImageBackground source={require("../../../assets/bg.png") }style={{backgroundColor:"#03045e",flex:1,height:Dimensions.get('screen').height, width:Dimensions.get('screen').width, alignItems:"center", paddingTop:100}}>
+
+  <View style={{flex:1, alignItems:"center"}}>
+  <MaterialCommunityIcons name="emoticon-happy-outline" size={45} color="white" style={{margin:20}} />
+    <Text allowFontScaling={false} style={{color:"white", fontSize:20,margin:20}}>You Won</Text>
+    {/* <Text allowFontScaling={false} style={{color:"gray", fontSize:15}}>You lost because you missed 3 turns.</Text> */}
+  
+    <TouchableOpacity style={{width:"auto", position:"absolute", flexDirection:"row", bottom:20}} onPress={()=>handlePlay()} title='Play Again'>
+     <MaterialIcons name="home" size={24} color="white"/>
+       <Text allowFontScaling={false} style={{color:"white",fontSize:18}}> Home</Text>
+     </TouchableOpacity>
+  </View>
+  </ImageBackground>
+  
+
+
   )
 }
 
@@ -137,6 +183,6 @@ const styles = StyleSheet.create({
     rowBox:{
         flex:1, borderColor:"gray",borderWidth:1,flexDirection:"row" 
     }
-  });
+});
 
 export default Winner
