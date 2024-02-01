@@ -41,6 +41,7 @@ export default class Game extends Component {
         this.soundObject = new Audio.Sound();
         this.rollingValue = new Animated.Value(0);
         this.onDiceRoll = this.onDiceRoll.bind(this);
+
         this.state = {
             currentPlayer: currentPlayer,
             nextPlayer: nextPlayer,
@@ -78,7 +79,7 @@ export default class Game extends Component {
             blueHeart: 3,
             greenHeart: 3,
             yellowHeart: 3,
-            remainingTime: 180, // 3 minutes in seconds
+            remainingTime:180, // 3 minutes in seconds
             winnerArray: [],
             status: "warning",
             title: "You missed a turn!",
@@ -89,7 +90,9 @@ export default class Game extends Component {
             setTurn: false,
             socketId: null,
             setTimer: false,
-            setIsTimerActive: false
+            setIsTimerActive: false,
+            showDice:null,
+            playerColor:null
 
 
         }
@@ -106,17 +109,22 @@ export default class Game extends Component {
         this.loadSound();
         this.loadPieceBiteSound()
         // this.displayTimer();
+
+
         this.startTimer()
 
         // Listen for 'getTimer' events from the server
-       Socket.on('getTimer', (value) => {
-        this.setState({ setIsTimerActive: value });
-       });
-  
-      // Listen for 'updateTimerState' events from the server
-      Socket.on('updateTimerState', (timerData) => {
-        this.handleTimerUpdate(timerData);
-       });
+        Socket.on('getTimer', (value) => {
+            this.setState({ setIsTimerActive: value });
+        });
+
+        Socket.on('color',(color)=>{
+            //  console.log("118",color)
+            this.setState({playerColor:color})
+            this.state.playerColor=color
+       })
+
+
         //update gamestate
         Socket.on('broadcastGameState', ({ gameState }) => {
             // console.log('Received broadcasted gameState:', gameState);
@@ -126,13 +134,11 @@ export default class Game extends Component {
                 red: gameState.red,
                 yellow: gameState.yellow,
                 green: gameState.green,
-                blue: gameState.blue,  // isRolling: gameState.isRolling,
+                blue: gameState.blue,  
+                isRolling: gameState.isRolling,
                 diceNumber: gameState.diceNumber,
                 isWaitingForDiceRoll: gameState.isWaitingForDiceRoll,
                 turn: gameState.turn,
-                // diceRollTestData: gameState.diceRollTestData,
-                // diceRollTestDataIndex: gameState.diceRollTestDataIndex,
-                // extraChance: gameState.extraChance,
                 redScore: gameState.redScore,
                 blueScore: gameState.blueScore,
                 greenScore: gameState.greenScore,
@@ -141,25 +147,40 @@ export default class Game extends Component {
                 blueHeart: gameState.blueHeart,
                 greenHeart: gameState.greenHeart,
                 yellowHeart: gameState.yellowHeart,
-                remainingTime: gameState.remainingTime, // 3 minutes in seconds,
-                // keysToRemove: gameState.keysToRemove,
-                timers: {
-                    RED: null,
-                    YELLOW: null,
-                    GREEN: null,
-                    BLUE: null,
-                },
+               
+         
             })
+
+
+
+            // console.log("152", gameState.turn)
         })
+
         //getTurn
         Socket.on('getTurn', (value) => {
-            console.log("143 turn", this.state.currentPlayer, value)
-            this.setState({ setTurn: value })
-        })
+            this.setState({ setTurn: value }
+                , () => {
+                    if (value) {
+                        // Start the turn timer on the client side
+                        this.startTurnTimer();
+                    } else {
+                        // Stop the turn timer on the client side
+                        this.stopTurnTimer();
+                    }
+                }
+            );
+        });
+
+        Socket.on('endGame',async(value)=>{
+            if(value){
+                await AsyncStorage.setItem('result', JSON.stringify(value)) 
+                this.props.onEnd()
+            }
+       })
 
         this.clearAsyncStorageMultiple(this.state.keysToRemove).then(success => {
             if (success) {
-                // console.log('Keys cleared successfully');
+                console.log('Keys cleared successfully');
             } else {
                 // console.log('Failed to clear keys');
             }
@@ -173,32 +194,213 @@ export default class Game extends Component {
         // }
         this.unloadSound();
         this.unLoadPieceBiteSound()
-        clearInterval(this.intervalId);
-        this.clearAllTimers();
-        Socket.off('getTimer');
-        Socket.off('updateTimerState');
+        // clearInterval(this.intervalId);
+        // this.clearAllTimers();
+        // Socket.off('getTimer');
+        // Socket.off('updateTimerState');
         // Socket.emit('disconnectUser', { user: this.state.activePlayer })
 
     }
-    clearAllTimers() {
-        // Clear all existing timers
-        const { timers } = this.state;
-        Object.values(timers).forEach((timer) => {
-          if (timer) {
-            clearTimeout(timer);
-          }
-        });
+
+    startTurnTimer() {
+        this.setState({ setIsTimerActive: true });
+         this.state.timerId = setTimeout(() => {
+            this.decreaseHeart();
+            this.moveToNextPlayer();
+        }, 15000);
+
+        this.setState(prevState => ({
+            timers: {
+                ...prevState.timers,
+                [this.state.turn]: this.state.timerId
+            },
+            // timerId: timerId
+        }));
+
+    }
+
+    async decreaseHeart() {
+        const { turn, blueHeart, yellowHeart, redHeart, greenHeart } = this.state;
+        
+        switch (turn) {
+            case BLUE:
+                if (blueHeart > 1) {
+                    this.setState({
+                        blueHeart: blueHeart - 1,
+                        showAlert: true
+                    });
+                    setTimeout(() => {
+                        this.setState({ showAlert: false });
+                    }, 3000);
+                } else {
+                    // Handle game over or other logic
+                    // this.props.onEnd()
+            
+                    await AsyncStorage.removeItem('playerArray');
+                    
+                    Socket.emit('endGame',{
+                      loser: this.state.currentPlayer,
+                       winner: this.state.nextPlayer 
+                    })
+                 
+                    Socket.on('endGame',async(value)=>{
+                        if(value.value){
+                            await AsyncStorage.setItem('result', JSON.stringify(value)) 
+                            console.log("171",value)
+                           this.props.onEnd()
+                        }
+                   })
+                
+                 
+                }
+                break;
     
-        // Clear timers in the state
-        this.setState({
-          timers: {
-            RED: null,
-            YELLOW: null,
-            GREEN: null,
-            BLUE: null,
-          },
-        });
-      }
+            case YELLOW:
+                if (yellowHeart > 1) {
+                    this.setState({
+                        yellowHeart: yellowHeart - 1,
+                        showAlert: true
+                    });
+                    setTimeout(() => {
+                        this.setState({ showAlert: false });
+                    }, 3000);
+                } else {
+                    // Handle game over or other logic
+                    // this.props.onEnd()
+                  
+                    await AsyncStorage.removeItem('playerArray');
+                    Socket.emit('endGame',{
+                        loser: this.state.currentPlayer,
+                         winner: this.state.nextPlayer 
+                      })
+                    
+                      Socket.on('endGame',async(value)=>{
+                        if(value){
+                            await AsyncStorage.setItem('result', JSON.stringify(value)) 
+                            console.log("171",value)
+                           this.props.onEnd()
+                        }
+                   })
+                }
+                break;
+    
+            case RED:
+                if (redHeart > 1) {
+                    this.setState({
+                        redHeart: redHeart - 1,
+                        showAlert: true
+                    });
+                    setTimeout(() => {
+                        this.setState({ showAlert: false });
+                    }, 3000);
+                } else {
+                    // Handle game over or other logic
+                    this.props.onEnd()
+                //     await AsyncStorage.removeItem('playerArray');
+                //     Socket.emit('endGame',{
+                //         loser: this.state.currentPlayer,
+                //          winner: this.state.nextPlayer 
+                //       })
+             
+                //       Socket.on('endGame',async(value)=>{
+                //         if(value){
+                //             await AsyncStorage.setItem('result', JSON.stringify(value)) 
+                //             console.log("171",value)
+                //            this.props.onEnd()
+                //         }
+                //    })
+                }
+                break;
+    
+            case GREEN:
+                if (greenHeart > 1) {
+                    this.setState({
+                        greenHeart: greenHeart - 1,
+                        showAlert: true
+                    });
+                    setTimeout(() => {
+                        this.setState({ showAlert: false });
+                    }, 3000);
+                } else {
+                    // Handle game over or other logic
+                    this.props.onEnd()
+                //     await AsyncStorage.removeItem('playerArray');
+                //     Socket.emit('endGame',{
+                //         loser: this.state.currentPlayer,
+                //          winner: this.state.nextPlayer 
+                //       })
+                    
+                //       Socket.on('endGame',async(value)=>{
+                //         if(value){
+                //             await AsyncStorage.setItem('result', JSON.stringify(value)) 
+                //             console.log("171",value)
+                //            this.props.onEnd()
+                //         }
+                //    })
+                }
+                break;
+    
+            default:
+                break;
+        }
+
+    }
+    
+
+
+    // Stop the turn timer
+    stopTurnTimer() {
+        clearTimeout(this.state.timerId);
+        this.setState({ setIsTimerActive: false, timerId: null });
+        this.setState(prevState => ({
+            timers: {
+                ...prevState.timers,
+                [this.state.turn]: null
+            }
+        }));
+    }
+
+
+
+
+    async moveToNextPlayer() {
+        
+
+        // Clear the current player's timer
+        this.stopTurnTimer()
+
+        // Get the next player
+        const nextPlayer = this.getNextTurn();
+
+        // Update the current turn in the state
+        if (nextPlayer) {
+
+
+            this.setState({ animateForSelection: false, moves: [], turn: nextPlayer }, () => {
+
+                Socket.emit('changeTurn', {
+                    currentPlayer: this.state.currentPlayer, // Your socket ID
+                    nextPlayer: this.state.nextPlayer, // Other player's socket ID,
+                    diceNumber: this.state.diceNumber,
+                    extraChance: this.state.extraChance,
+                    bonusCount: this.state.bonusCount
+
+                })
+                Socket.emit('updateGameState', this.state);
+
+                if (this.state.setTurn) {
+                    // Start the turn timer on the client side
+                    this.startTurnTimer();
+                } else {
+                    // Stop the turn timer on the client side
+                    this.stopTurnTimer();
+                }
+
+            })
+        }
+      
+    }
+
 
     formatTime = (time) => {
         const minutes = Math.floor(time / 60);
@@ -207,23 +409,7 @@ export default class Game extends Component {
     };
 
 
-    // componentDidMount() {
 
-    //     // this.loadSound();
-    //     // this.loadPieceBiteSound()
-    //     // this.displayTimer();
-    //     // this.startTimer()
-    // //   AsyncStorage.clear()
-    // //  this.clearAsyncStorageMultiple(this.state.keysToRemove).then(success => {
-    // //     if (success) {
-    // //         // console.log('Keys cleared successfully');
-    // //     } else {
-    // //         // console.log('Failed to clear keys');
-    // //     }
-    // // });
-
-
-    // }
 
     async clearAsyncStorageMultiple(keysArray) {
         try {
@@ -366,173 +552,12 @@ export default class Game extends Component {
     };
 
 
-
-    displayTimer() {
-        const { turn, timers } = this.state;
-    
-        // Clear any existing timer for the current player
-        if (timers[turn]) {
-          clearTimeout(timers[turn]);
-        }
-    
-        // Set a new timer for the current player
-        const timerId = setTimeout(() => {
-          this.moveToNextPlayer();
-        }, 15000); // 15 seconds
-    
-        // Store the new timerId in the state
-        this.setState((prevState) => ({
-          timers: {
-            ...prevState.timers,
-            [turn]: timerId,
-          },
-        }));
-      }
-    
-      handleTimerUpdate(timerData) {
-        const { currentPlayer, remainingTime } = timerData;
-    
-        // Handle timer updates received from the server
-        // For example, you might update the UI to show the remaining time
-        console.log(`Received timer update for ${currentPlayer}. Remaining time: ${remainingTime} milliseconds`);
-      }
+    stopTimer = () => {
+        clearInterval(this.intervalId);
+        this.setState({ isActive: false, remainingTime: 180 }); // Reset to 3 minutes
 
 
-    async moveToNextPlayer() {
-        const { turn, timers } = this.state;
-
-        // Clear the current player's timer
-        if (timers[turn]) {
-            clearTimeout(timers[turn]);
-            this.setState(prevState => ({
-                timers: {
-                    ...prevState.timers,
-                    [this.state.turn]: null
-                }
-            }));
-
-            if (turn == BLUE) {
-
-                if (this.state.blueHeart > 1) {
-                    // Haptics.selectionAsync()
-                    this.setState({
-                        blueHeart: this.state.blueHeart - 1,
-                        showAlert: true
-                    })
-                    setTimeout(() => {
-                        this.setState({
-
-                            showAlert: false
-                        })
-                    }, 3000);
-
-
-                }
-                else if (this.state.blueHeart <= 1) {
-                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-                    // console.log("356 called")
-                    this.props.onEnd()
-
-                }
-
-            }
-            if (turn == YELLOW) {
-
-                if (this.state.yellowHeart > 1) {
-                    // Haptics.selectionAsync()
-                    this.setState({
-                        yellowHeart: this.state.yellowHeart - 1,
-                        showAlert: true
-                    })
-
-                    setTimeout(() => {
-                        this.setState({
-
-                            showAlert: false
-                        })
-                    }, 3000);
-
-                }
-                else if (this.state.yellowHeart <= 1) {
-                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-                    // console.log("381 called")
-                    this.props.onEnd()
-                }
-
-            }
-            if (turn == RED) {
-
-                if (this.state.redHeart > 1) {
-                    // Haptics.selectionAsync()
-                    this.setState({
-                        redHeart: this.state.redHeart - 1,
-                        showAlert: true
-                    })
-                    setTimeout(() => {
-                        this.setState({
-
-                            showAlert: false
-                        })
-                    }, 3000);
-
-
-                }
-                else if (this.state.redHeart <= 1) {
-                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-                    //  console.log("405 called")
-                    this.props.onEnd()
-                }
-
-            }
-            if (turn == GREEN) {
-                // Haptics.selectionAsync()
-                if (this.state.greenHeart > 1) {
-                    this.setState({
-                        greenHeart: this.state.greenHeart - 1,
-                        showAlert: true
-                    })
-                    setTimeout(() => {
-                        this.setState({
-
-                            showAlert: false
-                        })
-                    }, 3000);
-
-                }
-                else if (this.state.greenHeart <= 1) {
-                    await  this.clearAsyncStorageMultiple(this.state.keysToRemove)
-                    // console.log("429 called")
-                    this.props.onEnd()
-                }
-
-
-            }
-        }
-
-        // Get the next player
-        const nextPlayer = this.getNextTurn();
-
-        // Update the current turn in the state
-        if (nextPlayer) {
-
-
-            this.setState({ animateForSelection: false, moves: [], turn: nextPlayer }, () => {
-                this.displayTimer()
-            })
-
-
-
-
-            // this.displayTimer()
-
-
-        }
-        else {
-            // Handle the game end or next round logic here
-        }
-    }
-
-
+    };
 
 
 
@@ -584,7 +609,7 @@ export default class Game extends Component {
         if (isRolling) {
             return <Image rollTime={300} source={require("../../../assets/DICE2.png")}></Image>
 
-            //    <FontAwesome5 name="dice-d6" size={54} color="#fdfffc" 
+            //    <FontAwesome5 name="dice-d6" size={54} color="#fdfffc"
             //   numDice={1}  // Set the number of dice as needed
             //   rollTime={1000}
             //   faceColor="#ff5733"
@@ -628,17 +653,28 @@ export default class Game extends Component {
         return {
             one: { position: playerColor == RED ? R1 : playerColor == YELLOW ? Y1 : playerColor == GREEN ? G1 : playerColor == BLUE ? B1 : null, name: ONE, color: playerColor, updateTime: time, oneCount: [], piecePosition: new Animated.Value(0) },
             two: { position: playerColor == RED ? R1 : playerColor == YELLOW ? Y1 : playerColor == GREEN ? G1 : playerColor == BLUE ? B1 : null, name: TWO, color: playerColor, updateTime: time, twoCount: [], piecePosition: new Animated.Value(0) },
-            three: { position: playerColor == RED ? R1 : playerColor == YELLOW ? Y1 : playerColor == GREEN ? G1 : playerColor == BLUE ? B1 : null, name: THREE, color: playerColor, updateTime: time, threeCount: [], piecePosition: new Animated.Value(0) },
+            three: { position: playerColor == RED ? R1 : playerColor == YELLOW ? B4 : playerColor == GREEN ? G1 : playerColor == BLUE ? B1 : null, name: THREE, color: playerColor, updateTime: time, threeCount: [], piecePosition: new Animated.Value(0) },
             four: { position: playerColor == RED ? R1 : playerColor == YELLOW ? Y1 : playerColor == GREEN ? G1 : playerColor == BLUE ? B1 : null, name: FOUR, color: playerColor, updateTime: time, fourCount: [], piecePosition: new Animated.Value(0) }
         }
     }
+
+
+    restartTurnTimer() {
+        // Clear the current player's timer
+        this.stopTurnTimer();
+      
+        // Start the turn timer for the current player
+        this.startTurnTimer();
+      }
 
 
     render() {
         const { remainingTime, turn } = this.state;
         const { redName, yellowName, greenName, blueName } = this.props;
 
+        console.log("598",turn)
 
+        // console.log("614", turn,this.state.setTurn)
 
         return (
 
@@ -667,7 +703,7 @@ export default class Game extends Component {
                 </View>
 
 
-                {console.log("627", this.state.setIsTimerActive, this.state.currentPlayer)}
+                {/* {console.log("627", this.state.setIsTimerActive, this.state.currentPlayer)} */}
 
                 {
 
@@ -692,7 +728,7 @@ export default class Game extends Component {
                                 {({ remainingTime }) =>
 
                                     <View style={[styles.diceBtn3, {
-                                        backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : "red", borderWidth: 8,
+                                        backgroundColor: "#231942", borderWidth: 8,
                                         borderColor: 'rgba(0,0,0,0.2)',
                                     }]}>
 
@@ -701,7 +737,7 @@ export default class Game extends Component {
 
                                                 {
                                                     transform: [{ rotate: this.state.rollingRotation }],
-                                                    backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : null
+                                                    // backgroundColor: "#7b2cbf"
                                                 },
                                             ]}
                                         >
@@ -722,7 +758,7 @@ export default class Game extends Component {
                             bottom: "8.5%", left: "38%",
                         }}>
                             <View style={[styles.diceBtn3, {
-                                backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : "red", borderWidth: 8,
+                                backgroundColor: "", borderWidth: 8,
                                 borderColor: 'rgba(0,0,0,0.2)',
                             }]}>
 
@@ -731,7 +767,7 @@ export default class Game extends Component {
 
                                         {
                                             transform: [{ rotate: this.state.rollingRotation }],
-                                            backgroundColor: this.state.turn == BLUE ? "#0582ca" : this.state.turn == RED ? "#780000" : this.state.turn == YELLOW ? "#fdc500" : this.state.turn == GREEN ? "#004b23" : null
+                                            backgroundColor: ""
                                         },
                                     ]}
                                 >
@@ -748,14 +784,14 @@ export default class Game extends Component {
 
                     <View style={styles.twoPlayersContainer}>
 
-                        {this.renderPlayerBox(redName, this.state.red, this.state.redScore, this.state.redHeart, this.state.timers[RED] != null ? true : false, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderTopLeftRadius: 20 })}
+                        {this.renderPlayerBox(redName, this.state.red, this.state.redScore, this.state.redHeart,  this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, this.state.showDice = turn == "red"?true:false,this.state.timers[RED]!= null ? true : false, { borderTopLeftRadius: 20 })}
                         <VerticalCellsContainer position={TOP_VERTICAL}
                             state={this.state}
                             onPieceSelection={(selectedPiece) => {
                                 this.onPieceSelection(selectedPiece);
                             }}
                         />
-                        {this.renderPlayerBox(yellowName, this.state.yellow, this.state.yellowScore, this.state.yellowHeart, this.state.timers[YELLOW] != null ? true : false, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderTopRightRadius: 20 })}
+                        {this.renderPlayerBox(yellowName, this.state.yellow, this.state.yellowScore, this.state.yellowHeart, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, this.state.showDice = turn== "yellow" ? true:false ,this.state.timers[YELLOW]!= null ? true : false, { borderTopRightRadius: 20 })}
                     </View>
                     <HorizontalCellsContainer state={this.state}
                         onDiceRoll={() => { this.onDiceRoll() }}
@@ -764,14 +800,14 @@ export default class Game extends Component {
                         }}
                     />
                     <View style={styles.twoPlayersContainer}>
-                        {this.renderPlayerBox(blueName, this.state.blue, this.state.blueScore, this.state.blueHeart, this.state.timers[BLUE] != null ? true : false, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderBottomLeftRadius: 0 })}
+                        {this.renderPlayerBox(blueName, this.state.blue, this.state.blueScore, this.state.blueHeart, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons,this.state.showDice = turn== "blue" ? true:false ,this.state.timers[BLUE]!= null ? true : false, { borderBottomLeftRadius: 0 })}
                         <VerticalCellsContainer position={BOTTOM_VERTICAL}
                             state={this.state}
                             onPieceSelection={(selectedPiece) => {
                                 this.onPieceSelection(selectedPiece);
                             }}
                         />
-                        {this.renderPlayerBox(greenName, this.state.green, this.state.greenScore, this.state.greenHeart, this.state.timers[GREEN] != null ? true : false, this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, { borderBottomRightRadius: 0 })}
+                        {this.renderPlayerBox(greenName, this.state.green, this.state.greenScore, this.state.greenHeart,  this.state.diceNumber, this.state.isRolling, this.renderDiceIcons, this.state.showDice = turn == "green" ?true:false,this.state.timers[GREEN]!= null ? true : false, { borderBottomRightRadius: 0 })}
                     </View>
                 </View>
 
@@ -807,7 +843,12 @@ export default class Game extends Component {
     async onDiceRoll() {
 
 
+           
+  Socket.on('rollDice', (data) => {
+    // Broadcast the dice roll event to all clients in the room
+    io.to(data.roomId).emit('diceRolled', { playerId: data.playerId, diceNumber: data.diceNumber });
 
+  });
         const { diceRollTestDataIndex, diceRollTestData, animateForSelection } = this.state;
 
         if (animateForSelection) {
@@ -1116,6 +1157,13 @@ export default class Game extends Component {
         if (piece.position == FINISHED) {
             this.playSound()
             // this.displayTimer()
+            // if (this.state.setTurn) {
+            //     // Start the turn timer on the client side
+            //     this.startTurnTimer();
+            //   } else {
+            //     // Stop the turn timer on the client side
+            //     this.stopTurnTimer();
+            //   }
             return true;
         }
 
@@ -1130,6 +1178,7 @@ export default class Game extends Component {
 
         const checkIfPositionMatchesExistingPiece = (piece, player) => {
             const { one, two, three, four } = player.pieces;
+            // console.log(piece)
             // console.log("FINAL PLAYER", one)
             let positionMatched = false;
             if (piece.position == one.position) {
@@ -1137,6 +1186,7 @@ export default class Game extends Component {
                 // console.log("643", one.oneCount)
                 one.oneCount.splice(0, one.oneCount.length)
                 positionMatched = true;
+
             }
             if (piece.position == two.position) {
                 two.position = two.color == "red" ? R1 : two.color == "yellow" ? Y1 : two.color == "green" ? G1 : two.color == "blue" ? B1 : null;
@@ -1163,24 +1213,52 @@ export default class Game extends Component {
         if (piece.color != red.player && checkIfPositionMatchesExistingPiece(piece, red)) {
             this.playSound()
             // this.displayTimer()
+            // if (this.state.setTurn) {
+            //     // Start the turn timer on the client side
+            //     this.startTurnTimer();
+            //   } else {
+            //     // Stop the turn timer on the client side
+            //     this.stopTurnTimer();
+            //   }
             return true;
         }
 
         if (piece.color != yellow.player && checkIfPositionMatchesExistingPiece(piece, yellow)) {
             this.playSound()
             // this.displayTimer()
+            // if (this.state.setTurn) {
+            //     // Start the turn timer on the client side
+            //     this.startTurnTimer();
+            //   } else {
+            //     // Stop the turn timer on the client side
+            //     this.stopTurnTimer();
+            //   }
             return true;
         }
 
         if (piece.color != green.player && checkIfPositionMatchesExistingPiece(piece, green)) {
             this.playSound()
             // this.displayTimer()
+            // if (this.state.setTurn) {
+            //     // Start the turn timer on the client side
+            //     this.startTurnTimer();
+            //   } else {
+            //     // Stop the turn timer on the client side
+            //     this.stopTurnTimer();
+            //   }
             return true;
         }
 
         if (piece.color != blue.player && checkIfPositionMatchesExistingPiece(piece, blue)) {
             this.playSound()
             // this.displayTimer()
+            // if (this.state.setTurn) {
+            //     // Start the turn timer on the client side
+            //     this.startTurnTimer();
+            //   } else {
+            //     // Stop the turn timer on the client side
+            //     this.stopTurnTimer();
+            //   }
             return true;
 
         }
@@ -1243,7 +1321,10 @@ export default class Game extends Component {
                     this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false, }, () => {
                         Socket.emit('changeTurn', {
                             currentPlayer: this.state.currentPlayer, // Your socket ID
-                            nextPlayer: this.state.nextPlayer // Other player's socket ID
+                            nextPlayer: this.state.nextPlayer, // Other player's socket ID
+                            diceNumber: this.state.diceNumber,
+                            extraChance: this.state.extraChance,
+                            bonusCount: this.state.bonusCount
                         })
                     })
 
@@ -1260,7 +1341,10 @@ export default class Game extends Component {
                 this.setState({ turn: this.getNextTurn(), moves: [], animateForSelection: false }, () => {
                     Socket.emit('changeTurn', {
                         currentPlayer: this.state.currentPlayer, // Your socket ID
-                        nextPlayer: this.state.nextPlayer // Other player's socket ID
+                        nextPlayer: this.state.nextPlayer,
+                        diceNumber: this.state.diceNumber,
+                        extraChance: this.state.extraChance,
+                        bonusCount: this.state.bonusCount // Other player's socket ID
                     })
                 })
 
@@ -1272,7 +1356,10 @@ export default class Game extends Component {
             this.setState({ turn: this.getNextTurn(), animateForSelection: false }, () => {
                 Socket.emit('changeTurn', {
                     currentPlayer: this.state.currentPlayer, // Your socket ID
-                    nextPlayer: this.state.nextPlayer // Other player's socket ID
+                    nextPlayer: this.state.nextPlayer,
+                    diceNumber: this.state.diceNumber,
+                    extraChance: this.state.extraChance,
+                    bonusCount: this.state.bonusCount // Other player's socket ID
                 })
             })
 
@@ -1294,7 +1381,7 @@ export default class Game extends Component {
 
 
 
-        this.stopTimer()
+        this.stopTurnTimer()
 
 
         if (this.state.isWaitingForDiceRoll) {
@@ -1461,7 +1548,9 @@ export default class Game extends Component {
 
             if (move == 6 && this.state.extraChance >= 1) {
 
-                // this.displayTimer();
+                // // this.displayTimer();
+                // this.restartTurnTimer();
+
             }
 
             if (piece.name == "one") {
@@ -1537,13 +1626,24 @@ export default class Game extends Component {
 
                 } else if (this.state.moves.length == 0 || this.isPlayerFinished(player)) {
                     this.setState({ animateForSelection: false, moves: [], turn: this.getNextTurn() }, () => {
+
                         Socket.emit('changeTurn', {
                             currentPlayer: this.state.currentPlayer, // Your socket ID
-                            nextPlayer: this.state.nextPlayer // Other player's socket ID
+                            nextPlayer: this.state.nextPlayer, // Other player's socket ID
+                            diceNumber: this.state.diceNumber,
+                            extraChance: this.state.extraChance,
+                            bonusCount: this.state.bonusCount
                         })
-
                         Socket.emit('updateGameState', this.state);
                         // this.displayTimer()
+                        // this.restartTurnTimer()
+                        // if (this.state.setTurn) {
+                        //     // Start the turn timer on the client side
+                        //     this.startTurnTimer();
+                        //   } else {
+                        //     // Stop the turn timer on the client side
+                        //     this.stopTurnTimer();
+                        //   }
                     })
 
                 }
@@ -1555,10 +1655,11 @@ export default class Game extends Component {
 
     }
 
-    renderPlayerBox(playerName, player, playerScore, lifeline, timer, customStyle) {
+    renderPlayerBox(playerName, player, playerScore, lifeline, showDice,timer, customStyle) {
         const { one, two, three, four } = player.pieces;
         customStyle.opacity = this.state.turn == player.player ? 1 : 0.6;
         let hasSix = this.state.moves.filter((move) => move == 6).length > 0;
+        // console.log(player.color)
         return (
             <PlayerBox
 
@@ -1583,6 +1684,7 @@ export default class Game extends Component {
                 diceNumber={this.state.diceNumber}
                 isRolling={this.state.isRolling}
                 renderDiceIcons={this.renderDiceIcons}
+                showDice = {this.state.turn == player.player ? true:false}
 
             />
         )
@@ -1609,7 +1711,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         alignSelf: 'center',
         // 65
-        marginTop: 15
+        marginTop: 65
     },
     twoPlayersContainer: {
         flex: 4,
@@ -1771,7 +1873,4 @@ const styles = StyleSheet.create({
         // paddingRight: 20
     },
 })
-
-
-
-// i want to add 15sec timer to currentplayer to move the piece if it move the piece within 15 sec then i stop the timer and change the turn value but if the player got six and bites other player goti then i want to start again timer and when it move the piece within 15 sec then change the turn
+// i also want to show dice roll and dice number and timer of the current player to the next player how i pass the state which holds these value to renderplayerbox 
