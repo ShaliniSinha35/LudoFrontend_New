@@ -153,7 +153,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 const App = () => {
 
   const route = useRoute()
-  // console.log("155", route.params.mobile)
+  console.log("155", route.params.mobile)
   const [state, setState] = useState({
     isGameInProgress: false,
     isStartGameModalVisible: false,
@@ -236,6 +236,7 @@ clearAsyncStorageMultiple(keysToRemove).then(success => {
         onYellowInput={name => handlePlayerInput('yellow', name)}
         onGreenInput={name => handlePlayerInput('green', name)}
         onBlueInput={name => handlePlayerInput('blue', name)}
+        currentPlayer={state.currentPlayer}
       
       />
     );
